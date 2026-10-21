@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/menu';
+import ProductPhoto from './ProductPhoto';
 
 // Sticky scroll: a foto fica parada enquanto os textos dos produtos passam ao lado.
 export default function StickyShowcase({ id, theme, kicker, title, intro, products }) {
@@ -42,7 +43,7 @@ export default function StickyShowcase({ id, theme, kicker, title, intro, produc
       <div className="showcase-grid">
         <div className="stage">
           <figure key={products[active].id} className="stage-photo">
-            <img src={products[active].image} alt={products[active].name} />
+            <ProductPhoto product={products[active]} className="stage-img" />
             <figcaption>
               <span>{products[active].name}</span>
               <b>{formatPrice(products[active].price)}</b>

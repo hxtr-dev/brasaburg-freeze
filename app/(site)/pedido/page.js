@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/components/CartProvider';
+import ProductPhoto from '@/components/ProductPhoto';
 import { BURGERS, COMBOS, GELADINHOS, formatPrice } from '@/lib/menu';
 
 function useSectionTheme(refs) {
@@ -22,7 +23,7 @@ function ProductCard({ product, onAdd }) {
   const [added, setAdded] = useState(false);
   return (
     <article id={product.id} className="card">
-      <img className="thumb" src={product.image} alt={product.name} loading="lazy" />
+      <ProductPhoto product={product} className="thumb" />
       <div className="card-body">
         <h3>{product.name}</h3>
         <p>{product.tagline}</p>
@@ -183,16 +184,17 @@ export default function PedidoPage() {
 
       <section id="combos" ref={combosRef} data-theme="mix" className="order-section mix">
         <h2>Combos</h2>
-        <div className="combo-list">
+        <div className="cards">
           {COMBOS.map((c) => (
-            <article key={c.id} className="combo">
-              <div>
+            <article key={c.id} id={c.id} className="card combo">
+              <ProductPhoto product={c} className="thumb" />
+              <div className="card-body">
                 <h3>{c.name}</h3>
                 <p>{c.description}</p>
-              </div>
-              <div className="card-buy">
-                <span className="price">{formatPrice(c.price)}</span>
-                <button type="button" className="btn" onClick={() => setCombo(c)}>Escolher</button>
+                <div className="card-buy">
+                  <span className="price">{formatPrice(c.price)}</span>
+                  <button type="button" className="btn" onClick={() => setCombo(c)}>Escolher</button>
+                </div>
               </div>
             </article>
           ))}
