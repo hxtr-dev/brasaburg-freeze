@@ -6,17 +6,21 @@ import { useCart } from '@/components/CartProvider';
 import ProductPhoto from '@/components/ProductPhoto';
 import { BURGERS, COMBOS, GELADINHOS, formatPrice } from '@/lib/menu';
 
-function useSectionTheme(refs) {
+function useSectionTheme(refs, onActive) {
   useEffect(() => {
     const io = new IntersectionObserver(
       (entries) => {
-        for (const e of entries) if (e.isIntersecting) document.documentElement.dataset.theme = e.target.dataset.theme;
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          document.documentElement.dataset.theme = e.target.dataset.theme;
+          onActive(e.target.id);
+        }
       },
       { rootMargin: '-40% 0px -55% 0px' },
     );
     refs.forEach((r) => r.current && io.observe(r.current));
     return () => io.disconnect();
-  }, [refs]);
+  }, [refs, onActive]);
 }
 
 function ProductCard({ product, onAdd }) {
@@ -146,7 +150,8 @@ export default function PedidoPage() {
   const geladinhosRef = useRef(null);
   const combosRef = useRef(null);
   const [refs] = useState(() => [burgersRef, geladinhosRef, combosRef]);
-  useSectionTheme(refs);
+  const [activeTab, setActiveTab] = useState('hamburgueres');
+  useSectionTheme(refs, setActiveTab);
 
   useEffect(() => {
     document.documentElement.dataset.theme = 'brasa';
@@ -157,12 +162,18 @@ export default function PedidoPage() {
       <header className="order-head">
         <h1>Faça seu pedido</h1>
         <p>Escolha os produtos, finalize e acompanhe pelo número do pedido.</p>
-        <nav className="order-tabs">
-          <a href="#hamburgueres">Hambúrgueres</a>
-          <a href="#geladinhos">Geladinhos</a>
-          <a href="#combos">Combos</a>
-        </nav>
       </header>
+      <nav className="order-tabs">
+        {[
+          ['hamburgueres', 'Hambúrgueres'],
+          ['geladinhos', 'Geladinhos'],
+          ['combos', 'Combos'],
+        ].map(([id, label]) => (
+          <a key={id} href={`#${id}`} className={activeTab === id ? 'on' : ''}>
+            {label}
+          </a>
+        ))}
+      </nav>
 
       <section id="hamburgueres" ref={burgersRef} data-theme="brasa" className="order-section brasa">
         <h2>Hambúrgueres</h2>
