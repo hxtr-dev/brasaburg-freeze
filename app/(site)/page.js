@@ -28,7 +28,7 @@ export default function Home() {
         theme="brasa"
         kicker="01 · Brasa"
         title="Hambúrgueres"
-        intro="Pão brioche, hambúrguer de carne, cheddar e o molho da casa. Quatro receitas, do clássico ao mais completo."
+        intro="Pão brioche, hambúrguer de carne e cheddar. Quatro receitas, do clássico ao mais completo. Molho da casa à parte por R$ 2,49 (já incluso no Brasa Supreme)."
         products={BURGERS}
       />
 

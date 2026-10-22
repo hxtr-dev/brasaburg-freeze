@@ -13,7 +13,7 @@ function clock(ms) {
 }
 
 function whatsappLink(order) {
-  const text = `Olá, ${order.name}! Seu pedido #${order.number} na BrasaBurg & Freeze está pronto. Pode retirar no balcão. 🔥🧊`;
+  const text = `Olá, ${order.name}! Seu pedido #${order.number} na BrasaBurg & Freeze está pronto. Pode retirar no balcão.`;
   return `https://wa.me/${order.phone}?text=${encodeURIComponent(text)}`;
 }
 

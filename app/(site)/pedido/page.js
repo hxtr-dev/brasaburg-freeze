@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/components/CartProvider';
 import ProductPhoto from '@/components/ProductPhoto';
-import { BURGERS, COMBOS, GELADINHOS, formatPrice } from '@/lib/menu';
+import { BURGERS, COMBOS, GELADINHOS, SAUCE, formatPrice } from '@/lib/menu';
 import { scrollToSection } from '@/lib/smooth-scroll';
 
 function useSectionTheme(refs, onActive) {
@@ -24,14 +24,27 @@ function useSectionTheme(refs, onActive) {
   }, [refs, onActive]);
 }
 
+function useFlash() {
+  const [on, setOn] = useState(false);
+  return [on, () => {
+    setOn(true);
+    setTimeout(() => setOn(false), 1200);
+  }];
+}
+
 function ProductCard({ product, onAdd }) {
-  const [added, setAdded] = useState(false);
+  const [added, flash] = useFlash();
   return (
     <article id={product.id} className="card">
       <ProductPhoto product={product} className="thumb" />
       <div className="card-body">
         <h3>{product.name}</h3>
         <p>{product.tagline}</p>
+        {product.sauce && (
+          <span className={`sauce-note ${product.sauce}`}>
+            {product.sauce === 'incluso' ? 'Molho incluso' : `Molho: + ${formatPrice(SAUCE.price)}`}
+          </span>
+        )}
         <div className="card-buy">
           <span className="price">{formatPrice(product.price)}</span>
           <button
@@ -39,8 +52,7 @@ function ProductCard({ product, onAdd }) {
             className="btn"
             onClick={() => {
               onAdd();
-              setAdded(true);
-              setTimeout(() => setAdded(false), 1200);
+              flash();
             }}
           >
             {added ? 'Adicionado ✓' : 'Adicionar'}
@@ -48,6 +60,31 @@ function ProductCard({ product, onAdd }) {
         </div>
       </div>
     </article>
+  );
+}
+
+function SauceCard({ onAdd }) {
+  const [added, flash] = useFlash();
+  return (
+    <div id={SAUCE.id} className="sauce-card">
+      <div>
+        <h3>Molho da casa extra</h3>
+        <p>Porção de 30g para acompanhar o seu hambúrguer. No Brasa Supreme o molho já vem incluso.</p>
+      </div>
+      <div className="sauce-buy">
+        <span className="price">{formatPrice(SAUCE.price)}</span>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => {
+            onAdd();
+            flash();
+          }}
+        >
+          {added ? 'Adicionado ✓' : 'Adicionar molho'}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -59,7 +96,7 @@ function ComboPicker({ combo, onClose, onConfirm }) {
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h3 id="combo-title">{combo.name}</h3>
         <p>
-          Escolha {combo.geladinhos === 1 ? 'o sabor do geladinho' : `os ${combo.geladinhos} sabores dos geladinhos`}.
+          Escolha {combo.geladinhos === 1 ? 'o sabor do geladinho' : `os ${combo.geladinhos} geladinhos (pode repetir o sabor)`}.
         </p>
         <div className="flavor-list">
           {GELADINHOS.map((g) => {
@@ -191,6 +228,7 @@ export default function PedidoPage() {
             <ProductCard key={p.id} product={p} onAdd={() => add(p.id)} />
           ))}
         </div>
+        <SauceCard onAdd={() => add(SAUCE.id)} />
       </section>
 
       <section id="geladinhos" ref={geladinhosRef} data-theme="freeze" className="order-section freeze">

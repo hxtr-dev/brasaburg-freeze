@@ -1,13 +1,13 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { BURGERS, COMBOS, GELADINHOS } from '@/lib/menu';
+import { BURGERS, COMBOS, GELADINHOS, SAUCE } from '@/lib/menu';
 
 const CartContext = createContext(null);
 const CART_KEY = 'brasaburg:carrinho';
 const CUSTOMER_KEY = 'brasaburg:cliente';
 
-const CATALOG = new Map([...BURGERS, ...GELADINHOS, ...COMBOS].map((p) => [p.id, p]));
+const CATALOG = new Map([...BURGERS, ...GELADINHOS, ...COMBOS, SAUCE].map((p) => [p.id, p]));
 
 function read(key, fallback) {
   try {
