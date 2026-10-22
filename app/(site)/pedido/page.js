@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/components/CartProvider';
 import ProductPhoto from '@/components/ProductPhoto';
 import { BURGERS, COMBOS, GELADINHOS, formatPrice } from '@/lib/menu';
+import { scrollToSection } from '@/lib/smooth-scroll';
 
 function useSectionTheme(refs, onActive) {
   useEffect(() => {
@@ -169,7 +170,15 @@ export default function PedidoPage() {
           ['geladinhos', 'Geladinhos'],
           ['combos', 'Combos'],
         ].map(([id, label]) => (
-          <a key={id} href={`#${id}`} className={activeTab === id ? 'on' : ''}>
+          <a
+            key={id}
+            href={`#${id}`}
+            className={activeTab === id ? 'on' : ''}
+            onClick={(e) => {
+              e.preventDefault();
+              scrollToSection(id);
+            }}
+          >
             {label}
           </a>
         ))}
