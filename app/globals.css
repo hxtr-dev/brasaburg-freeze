@@ -112,7 +112,7 @@ img {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 16px;
-  background: rgba(11, 11, 13, 0.72);
+  background: rgba(11, 11, 13, 0.96);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
 }
@@ -239,7 +239,7 @@ img {
   justify-content: flex-end;
   align-items: center;
   text-align: center;
-  padding: 24px 16px 48px;
+  padding: 56px 16px 48px;
   background: linear-gradient(180deg, transparent 50%, rgba(11, 11, 13, 0.92) 78%);
 }
 
