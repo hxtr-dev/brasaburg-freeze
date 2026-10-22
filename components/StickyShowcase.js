@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/menu';
+import PriceTag from './PriceTag';
 import ProductPhoto from './ProductPhoto';
 
 // Sticky scroll: a foto fica parada enquanto os textos dos produtos passam ao lado.
@@ -78,7 +79,7 @@ export default function StickyShowcase({ id, theme, kicker, title, intro, produc
                 ))}
               </dl>
               <div className="panel-buy">
-                <span className="price">{formatPrice(p.price)}</span>
+                <PriceTag product={p} />
                 <Link href={`/pedido#${p.id}`} className="btn">Pedir este</Link>
               </div>
             </article>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/components/CartProvider';
+import PriceTag from '@/components/PriceTag';
 import ProductPhoto from '@/components/ProductPhoto';
 import { BURGERS, COMBOS, GELADINHOS, SAUCE, formatPrice } from '@/lib/menu';
 import { scrollToSection } from '@/lib/smooth-scroll';
@@ -46,7 +47,7 @@ function ProductCard({ product, onAdd }) {
           </span>
         )}
         <div className="card-buy">
-          <span className="price">{formatPrice(product.price)}</span>
+          <PriceTag product={product} />
           <button
             type="button"
             className="btn"
@@ -123,7 +124,7 @@ function ComboPicker({ combo, onClose, onConfirm }) {
             {picked.length ? 'Limpar' : 'Cancelar'}
           </button>
           <button type="button" className="btn" disabled={!full} onClick={() => onConfirm(picked)}>
-            Adicionar · {formatPrice(combo.price)}
+            Adicionar ao pedido
           </button>
         </div>
       </div>
@@ -132,7 +133,7 @@ function ComboPicker({ combo, onClose, onConfirm }) {
 }
 
 function CartSheet({ open, onClose }) {
-  const { lines, total, setQty } = useCart();
+  const { lines, total, totalPix, setQty } = useCart();
   const router = useRouter();
   const { customer } = useCart();
   if (!open) return null;
@@ -161,9 +162,16 @@ function CartSheet({ open, onClose }) {
           </ul>
         )}
         <div className="cart-total">
-          <span>Total</span>
+          <span>Total no cartão</span>
           <b>{formatPrice(total)}</b>
         </div>
+        {totalPix < total && (
+          <div className="pix-total">
+            <span>Total no Pix</span>
+            <b>{formatPrice(totalPix)}</b>
+            <small>Economize {formatPrice(total - totalPix)} pagando no Pix</small>
+          </div>
+        )}
         <div className="modal-actions">
           <button type="button" className="btn btn-ghost" onClick={onClose}>Continuar escolhendo</button>
           <button
@@ -250,7 +258,7 @@ export default function PedidoPage() {
                 <h3>{c.name}</h3>
                 <p>{c.description}</p>
                 <div className="card-buy">
-                  <span className="price">{formatPrice(c.price)}</span>
+                  <PriceTag product={c} />
                   <button type="button" className="btn" onClick={() => setCombo(c)}>Escolher</button>
                 </div>
               </div>

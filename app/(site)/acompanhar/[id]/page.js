@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import ThemeReset from '@/components/ThemeReset';
-import { formatPrice } from '@/lib/menu';
+import { formatPrice, paymentLabel } from '@/lib/menu';
 
 export default function AcompanharPage({ params }) {
   const { id } = use(params);
@@ -64,9 +64,10 @@ export default function AcompanharPage({ params }) {
               ))}
             </ul>
             <div className="cart-total">
-              <span>Total</span>
+              <span>Total{order.payment ? ` no ${paymentLabel(order.payment, true)}` : ''}</span>
               <b>{formatPrice(order.total)}</b>
             </div>
+            <p className="pay-note">Pagamento feito apenas no balcão de retirada.</p>
             <Link href="/pedido" className="btn btn-ghost">Fazer outro pedido</Link>
           </>
         )}

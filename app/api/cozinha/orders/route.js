@@ -13,6 +13,7 @@ function toJson(o) {
     phone: o.customer_phone,
     items: o.items,
     total: o.total_cents,
+    payment: o.payment_method ?? null,
     status: o.status,
     createdAt: o.created_at,
     readyAt: o.ready_at,

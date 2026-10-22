@@ -14,4 +14,7 @@ create table if not exists orders (
   unique (order_date, daily_number)
 );
 
+-- Forma de pagamento escolhida pelo cliente (pix, debito, credito); pagamento no balcão.
+alter table orders add column if not exists payment_method text;
+
 create index if not exists orders_status_created_idx on orders (status, created_at);

@@ -5,19 +5,22 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/components/CartProvider';
 import ThemeReset from '@/components/ThemeReset';
-import { formatPrice } from '@/lib/menu';
+import { formatPrice, paymentLabel, priceFor } from '@/lib/menu';
 
 export default function ConfirmarPage() {
-  const { ready, lines, total, customer, clear } = useCart();
+  const { ready, lines, total, totalPix, customer, clear } = useCart();
   const router = useRouter();
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (ready && !customer) router.replace('/entrar');
+    if (ready && !paymentLabel(customer?.payment)) router.replace('/entrar');
   }, [ready, customer, router]);
 
-  if (!ready || !customer) return null;
+  if (!ready || !paymentLabel(customer?.payment)) return null;
+
+  const isPix = customer.payment === 'pix';
+  const payTotal = isPix ? totalPix : total;
 
   const send = async () => {
     setSending(true);
@@ -29,6 +32,7 @@ export default function ConfirmarPage() {
         body: JSON.stringify({
           name: customer.name,
           phone: customer.phone,
+          payment: customer.payment,
           items: lines.map((l) => ({ productId: l.productId, qty: l.qty, flavors: l.flavors })),
         }),
       });
@@ -60,16 +64,24 @@ export default function ConfirmarPage() {
                     <b>{l.qty}× {l.product.name}</b>
                     {l.flavorNames.length > 0 && <small>Geladinho: {l.flavorNames.join(', ')}</small>}
                   </div>
-                  <span className="price">{formatPrice(l.subtotal)}</span>
+                  <span className="price">{formatPrice(priceFor(l.product, customer.payment) * l.qty)}</span>
                 </li>
               ))}
             </ul>
             <div className="cart-total">
-              <span>Total (pagamento no balcão)</span>
-              <b>{formatPrice(total)}</b>
+              <span>Total no {paymentLabel(customer.payment, true)}</span>
+              <b>{formatPrice(payTotal)}</b>
             </div>
+            {totalPix < total && (
+              <p className={`pay-hint ${isPix ? 'good' : ''}`}>
+                {isPix
+                  ? `Você está economizando ${formatPrice(total - totalPix)} pagando no Pix.`
+                  : `No Pix este pedido sai por ${formatPrice(totalPix)}, uma economia de ${formatPrice(total - totalPix)}.`}
+              </p>
+            )}
+            <p className="pay-note">Pagamento feito apenas no balcão de retirada.</p>
             <p className="who">
-              {customer.name} · {customer.phone} · <Link href="/entrar">alterar</Link>
+              {customer.name} · {customer.phone} · {paymentLabel(customer.payment)} · <Link href="/entrar">alterar</Link>
             </p>
             {error && <p className="form-error" role="alert">{error}</p>}
             <button type="button" className="btn btn-big" onClick={send} disabled={sending}>

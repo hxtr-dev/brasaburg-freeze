@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/components/CartProvider';
 import ThemeReset from '@/components/ThemeReset';
+import { PAYMENT_METHODS, formatPrice } from '@/lib/menu';
 
 function maskPhone(v) {
   const d = v.replace(/\D/g, '').slice(0, 11);
@@ -13,10 +14,11 @@ function maskPhone(v) {
 }
 
 export default function EntrarPage() {
-  const { customer, setCustomer } = useCart();
+  const { customer, setCustomer, total, totalPix } = useCart();
   const router = useRouter();
   const [name, setName] = useState(customer?.name ?? '');
   const [phone, setPhone] = useState(customer?.phone ?? '');
+  const [payment, setPayment] = useState(customer?.payment ?? '');
   const [error, setError] = useState('');
 
   const submit = (e) => {
@@ -24,7 +26,8 @@ export default function EntrarPage() {
     const digits = phone.replace(/\D/g, '');
     if (name.trim().length < 2) return setError('Digite seu nome.');
     if (digits.length < 10) return setError('Digite seu WhatsApp com DDD.');
-    setCustomer({ name: name.trim(), phone });
+    if (!payment) return setError('Escolha a forma de pagamento.');
+    setCustomer({ name: name.trim(), phone, payment });
     router.push('/confirmar');
   };
 
@@ -49,6 +52,30 @@ export default function EntrarPage() {
             required
           />
         </label>
+        <fieldset className="pay-options">
+          <legend>
+            Forma de pagamento <span>(pagamento feito apenas no balcão de retirada)</span>
+          </legend>
+          {PAYMENT_METHODS.map((m) => {
+            const amount = m.id === 'pix' ? totalPix : total;
+            return (
+              <label key={m.id} className={`pay-option ${payment === m.id ? 'on' : ''}`}>
+                <input type="radio" name="payment" value={m.id} checked={payment === m.id} onChange={() => {
+                    setPayment(m.id);
+                    setError('');
+                  }} />
+                <span className="pay-name">
+                  {m.label}
+                  {m.id === 'pix' && <em>Mais barato</em>}
+                </span>
+                {total > 0 && <b>{formatPrice(amount)}</b>}
+              </label>
+            );
+          })}
+          {totalPix < total && (
+            <p className="pay-hint">Pagando no Pix você economiza {formatPrice(total - totalPix)} neste pedido.</p>
+          )}
+        </fieldset>
         {error && <p className="form-error" role="alert">{error}</p>}
         <button type="submit" className="btn btn-big">Continuar</button>
       </form>

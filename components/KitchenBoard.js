@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { formatPrice } from '@/lib/menu';
+import { formatPrice, paymentLabel } from '@/lib/menu';
 import { formatPhone } from '@/lib/phone';
 
 const LIMIT_MS = 15 * 60 * 1000;
@@ -62,7 +62,10 @@ function OrderCard({ order, now, onReady }) {
         ))}
       </ul>
       <p className="ticket-total">
-        <span>Total a cobrar</span>
+        <span>
+          Total a cobrar
+          {order.payment && <em className={`pay-badge ${order.payment}`}>{paymentLabel(order.payment, true)}</em>}
+        </span>
         <b>{formatPrice(order.total)}</b>
       </p>
       <a className="btn btn-big btn-ready" href={whatsappLink(order)} target="_blank" rel="noreferrer" onClick={() => onReady(order)}>
@@ -186,7 +189,10 @@ export default function KitchenBoard() {
                 <a href={whatsappLink(o)} target="_blank" rel="noreferrer" className="link">Reenviar WhatsApp</a>
                 <button type="button" className="btn btn-ghost" onClick={() => setStatus(o, 'entregue')}>Entregue</button>
                 <button type="button" className="link" onClick={() => setStatus(o, 'novo')}>Desfazer</button>
-                <span className="ready-total">{formatPrice(o.total)}</span>
+                <span className="ready-total">
+                  {o.payment && <em className={`pay-badge ${o.payment}`}>{paymentLabel(o.payment, true)}</em>}
+                  {formatPrice(o.total)}
+                </span>
               </li>
             ))}
           </ul>
