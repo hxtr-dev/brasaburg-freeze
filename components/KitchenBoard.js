@@ -61,7 +61,10 @@ function OrderCard({ order, now, onReady }) {
           </li>
         ))}
       </ul>
-      <p className="ticket-total">{formatPrice(order.total)} · pagar no balcão</p>
+      <p className="ticket-total">
+        <span>Total a cobrar</span>
+        <b>{formatPrice(order.total)}</b>
+      </p>
       <a className="btn btn-big btn-ready" href={whatsappLink(order)} target="_blank" rel="noreferrer" onClick={() => onReady(order)}>
         Pedido Pronto e avisar no WhatsApp
       </a>
@@ -183,6 +186,7 @@ export default function KitchenBoard() {
                 <a href={whatsappLink(o)} target="_blank" rel="noreferrer" className="link">Reenviar WhatsApp</a>
                 <button type="button" className="btn btn-ghost" onClick={() => setStatus(o, 'entregue')}>Entregue</button>
                 <button type="button" className="link" onClick={() => setStatus(o, 'novo')}>Desfazer</button>
+                <span className="ready-total">{formatPrice(o.total)}</span>
               </li>
             ))}
           </ul>

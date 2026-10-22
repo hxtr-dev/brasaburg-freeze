@@ -1008,6 +1008,20 @@ input:focus {
   margin: 0;
 }
 
+.ticket-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ticket-total b {
+  font-family: var(--font-display), Impact, sans-serif;
+  font-size: 1.9rem;
+  font-weight: 400;
+  color: #fff;
+}
+
 .ticket-time,
 .ticket-total {
   color: var(--muted);
@@ -1064,6 +1078,14 @@ input:focus {
 
 .ready-list .ticket-num {
   font-size: 1.8rem;
+}
+
+.ready-total {
+  margin-left: auto;
+  font-family: var(--font-display), Impact, sans-serif;
+  font-size: 1.8rem;
+  color: #fff;
+  white-space: nowrap;
 }
 
 .muted {
