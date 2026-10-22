@@ -1080,6 +1080,120 @@ input:focus {
   font-size: 1.8rem;
 }
 
+.btn-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 90, 70, 0.6);
+  border-radius: 50%;
+  background: rgba(255, 59, 31, 0.15);
+  color: #ff8a7a;
+  font: 700 1.7rem/1 var(--font-body), sans-serif;
+  cursor: pointer;
+}
+
+.btn-x:active {
+  transform: scale(0.94);
+}
+
+.ready-hint {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.delivered-list {
+  margin-top: 24px;
+  color: var(--muted);
+}
+
+.delivered-list summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.delivered-list ul {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.delivered-list li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  opacity: 0.75;
+}
+
+.delivered-list .ticket-num {
+  font-size: 1.4rem;
+}
+
+.delivered-list .ready-total {
+  font-size: 1.4rem;
+}
+
+.day-summary {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.day-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.day-summary span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.day-summary b {
+  font: 400 2.2rem var(--font-display), sans-serif;
+  color: #fff;
+}
+
+.day-summary .day-main {
+  border-color: rgba(61, 220, 132, 0.45);
+  background: rgba(61, 220, 132, 0.08);
+}
+
+.day-summary .day-main b {
+  color: #3ddc84;
+  font-size: 2.8rem;
+}
+
+.day-summary small {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 820px) {
+  .day-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .day-summary .day-main {
+    grid-column: 1 / -1;
+  }
+}
+
 .ready-total {
   margin-left: auto;
   font-family: var(--font-display), Impact, sans-serif;
@@ -1699,4 +1813,8 @@ input:focus {
   .legal-section h2 {
     font-size: 1.45rem;
   }
+}
+
+.ready-total .pay-badge {
+  margin: 0 10px 0 0;
 }

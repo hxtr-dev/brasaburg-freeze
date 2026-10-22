@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getPool, TIMEZONE } from '@/lib/db';
+import { ensureSchema, getPool, TIMEZONE } from '@/lib/db';
 import { isKitchenAuthed } from '@/lib/kitchen-auth';
 import { orderLabel } from '@/lib/phone';
 
@@ -20,21 +20,27 @@ function toJson(o) {
   };
 }
 
-// Fila: pedidos em aberto por ordem de chegada + os últimos prontos de hoje.
+// Fila: pedidos em aberto por ordem de chegada, prontos e entregues de hoje e o resumo de valores do dia.
 export async function GET() {
   if (!(await isKitchenAuthed())) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
   const pool = getPool();
-  const [open, ready] = await Promise.all([
+  await ensureSchema();
+  const today = `(now() at time zone '${TIMEZONE}')::date`;
+  const [open, ready, delivered, summary] = await Promise.all([
     pool.query(`select * from orders where status = 'novo' order by created_at asc`),
+    pool.query(`select * from orders where status = 'pronto' and order_date = ${today} order by ready_at desc limit 30`),
+    pool.query(`select * from orders where status = 'entregue' and order_date = ${today} order by ready_at desc limit 100`),
     pool.query(
-      `select * from orders
-       where status = 'pronto' and order_date = (now() at time zone '${TIMEZONE}')::date
-       order by ready_at desc limit 12`,
+      `select status, payment_method, count(*)::int as count, sum(total_cents)::int as total
+       from orders where order_date = ${today} and status <> 'cancelado'
+       group by status, payment_method`,
     ),
   ]);
   return NextResponse.json({
     open: open.rows.map(toJson),
     ready: ready.rows.map(toJson),
+    delivered: delivered.rows.map(toJson),
+    summary: summary.rows,
     serverNow: new Date().toISOString(),
   });
 }

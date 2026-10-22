@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { formatPrice, paymentLabel } from '@/lib/menu';
+import { PAYMENT_METHODS, formatPrice, paymentLabel } from '@/lib/menu';
 import { formatPhone } from '@/lib/phone';
 
 const LIMIT_MS = 15 * 60 * 1000;
@@ -15,6 +15,56 @@ function clock(ms) {
 function whatsappLink(order) {
   const text = `Olá, ${order.name}! Seu pedido #${order.number} na BrasaBurg & Freeze está pronto. Pode retirar no balcão.`;
   return `https://wa.me/${order.phone}?text=${encodeURIComponent(text)}`;
+}
+
+// Atualiza o resumo do dia na hora do toque, sem esperar a próxima leitura do servidor.
+function moveInSummary(rows, order, status) {
+  const out = rows.map((r) => ({ ...r }));
+  const from = out.find((r) => r.status === order.status && (r.payment_method ?? null) === (order.payment ?? null));
+  if (from) {
+    from.count -= 1;
+    from.total -= order.total;
+  }
+  const to = out.find((r) => r.status === status && (r.payment_method ?? null) === (order.payment ?? null));
+  if (to) {
+    to.count += 1;
+    to.total += order.total;
+  } else {
+    out.push({ status, payment_method: order.payment ?? null, count: 1, total: order.total });
+  }
+  return out.filter((r) => r.count > 0);
+}
+
+// Arrecadado = pedidos já entregues (pagos no balcão). A receber = na fila ou prontos.
+function DaySummary({ rows }) {
+  const sum = (pred) => rows.filter(pred).reduce((n, r) => n + r.total, 0);
+  const count = rows.reduce((n, r) => n + r.count, 0);
+  const received = sum((r) => r.status === 'entregue');
+  const pending = sum((r) => r.status !== 'entregue');
+  const byMethod = PAYMENT_METHODS.map((m) => [m.short, sum((r) => r.status === 'entregue' && r.payment_method === m.id)]);
+  const unknown = sum((r) => r.status === 'entregue' && !r.payment_method);
+  if (unknown > 0) byMethod.push(['Sem forma', unknown]);
+  return (
+    <section className="day-summary" aria-label="Total do dia">
+      <div className="day-main">
+        <span>Arrecadado hoje</span>
+        <b>{formatPrice(received)}</b>
+        <small>
+          {byMethod.map(([label, v]) => `${label} ${formatPrice(v)}`).join(' · ')}
+        </small>
+      </div>
+      <div>
+        <span>A receber</span>
+        <b>{formatPrice(pending)}</b>
+        <small>na fila e prontos</small>
+      </div>
+      <div>
+        <span>Total do dia</span>
+        <b>{formatPrice(received + pending)}</b>
+        <small>{count} {count === 1 ? 'pedido' : 'pedidos'}</small>
+      </div>
+    </section>
+  );
 }
 
 function beep(ctx) {
@@ -76,7 +126,7 @@ function OrderCard({ order, now, onReady }) {
 }
 
 export default function KitchenBoard() {
-  const [data, setData] = useState({ open: [], ready: [] });
+  const [data, setData] = useState({ open: [], ready: [], delivered: [], summary: [] });
   const [offset, setOffset] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const [online, setOnline] = useState(true);
@@ -118,10 +168,12 @@ export default function KitchenBoard() {
     setData((d) => {
       const open = d.open.filter((o) => o.id !== order.id);
       const ready = d.ready.filter((o) => o.id !== order.id);
-      if (status === 'pronto') ready.unshift({ ...order, status, readyAt: new Date().toISOString() });
+      const delivered = d.delivered.filter((o) => o.id !== order.id);
+      if (status === 'pronto') ready.unshift({ ...order, status, readyAt: order.readyAt ?? new Date().toISOString() });
       if (status === 'novo') open.push({ ...order, status });
+      if (status === 'entregue') delivered.unshift({ ...order, status });
       open.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-      return { ...d, open, ready };
+      return { ...d, open, ready, delivered, summary: moveInSummary(d.summary, order, status) };
     });
     await fetch(`/api/cozinha/orders/${order.id}`, {
       method: 'PATCH',
@@ -167,6 +219,8 @@ export default function KitchenBoard() {
         </div>
       </header>
 
+      <DaySummary rows={data.summary} />
+
       <section className="queue" aria-label="Pedidos na fila">
         {data.open.length === 0 ? (
           <p className="empty">Nenhum pedido na fila. Os novos aparecem aqui sozinhos.</p>
@@ -187,16 +241,44 @@ export default function KitchenBoard() {
                   pronto às {new Date(o.readyAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                 </span>
                 <a href={whatsappLink(o)} target="_blank" rel="noreferrer" className="link">Reenviar WhatsApp</a>
-                <button type="button" className="btn btn-ghost" onClick={() => setStatus(o, 'entregue')}>Entregue</button>
                 <button type="button" className="link" onClick={() => setStatus(o, 'novo')}>Desfazer</button>
                 <span className="ready-total">
                   {o.payment && <em className={`pay-badge ${o.payment}`}>{paymentLabel(o.payment, true)}</em>}
                   {formatPrice(o.total)}
                 </span>
+                <button
+                  type="button"
+                  className="btn-x"
+                  aria-label={`Pedido #${o.number} entregue, tirar da lista`}
+                  title="Entregue: tirar da lista"
+                  onClick={() => setStatus(o, 'entregue')}
+                >
+                  ×
+                </button>
               </li>
             ))}
           </ul>
+          <p className="ready-hint">Toque no × quando o cliente retirar o pedido.</p>
         </section>
+      )}
+
+      {data.delivered.length > 0 && (
+        <details className="delivered-list">
+          <summary>Entregues hoje ({data.delivered.length})</summary>
+          <ul>
+            {data.delivered.map((o) => (
+              <li key={o.id}>
+                <span className="ticket-num">#{o.number}</span>
+                <span>{o.name}</span>
+                <span className="ready-total">
+                  {o.payment && <em className={`pay-badge ${o.payment}`}>{paymentLabel(o.payment, true)}</em>}
+                  {formatPrice(o.total)}
+                </span>
+                <button type="button" className="link" onClick={() => setStatus(o, 'pronto')}>Voltar para prontos</button>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
     </div>
   );
