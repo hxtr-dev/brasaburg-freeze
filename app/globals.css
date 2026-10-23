@@ -865,6 +865,31 @@ input:focus {
   color: #8fd8ff !important;
 }
 
+.panel-form .pay-waiting,
+.panel-form .pay-done {
+  align-self: center;
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.panel-form .pay-waiting {
+  border: 1px solid rgba(47, 168, 255, 0.7);
+  background: rgba(47, 168, 255, 0.15);
+  color: #8fd8ff;
+}
+
+.panel-form .pay-done {
+  border: 1px solid rgba(61, 220, 132, 0.7);
+  background: rgba(61, 220, 132, 0.15);
+  color: #3ddc84;
+}
+
+.ticket .pay-options {
+  text-align: left;
+}
+
 /* ---------- Cozinha (tablet) ---------- */
 
 .kitchen {
@@ -1133,6 +1158,50 @@ input:focus {
 
 .delivered-list .ticket-num {
   font-size: 1.4rem;
+}
+
+.pay-state {
+  min-height: 44px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font: 700 0.95rem var(--font-body), sans-serif;
+  cursor: pointer;
+}
+
+.pay-state.waiting {
+  border: 1px solid rgba(47, 168, 255, 0.7);
+  background: rgba(47, 168, 255, 0.15);
+  color: #8fd8ff;
+}
+
+.pay-state.paid {
+  border: 1px solid rgba(61, 220, 132, 0.7);
+  background: rgba(61, 220, 132, 0.18);
+  color: #3ddc84;
+}
+
+.ticket-card .pay-state {
+  width: 100%;
+}
+
+.receipt {
+  max-width: 420px;
+}
+
+.receipt-paper {
+  margin: 0;
+  padding: 20px;
+  border-radius: 8px;
+  background: #fbf8f2;
+  color: #1b1b1b;
+  font: 500 0.95rem/1.5 ui-monospace, 'Courier New', monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.btn-whats {
+  background: #25d366;
+  color: #0b2a17;
 }
 
 .delivered-list .ready-total {

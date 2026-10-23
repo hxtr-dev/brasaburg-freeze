@@ -14,6 +14,7 @@ function toJson(o) {
     items: o.items,
     total: o.total_cents,
     payment: o.payment_method ?? null,
+    paidAt: o.paid_at ?? null,
     status: o.status,
     createdAt: o.created_at,
     readyAt: o.ready_at,
@@ -31,9 +32,9 @@ export async function GET() {
     pool.query(`select * from orders where status = 'pronto' and order_date = ${today} order by ready_at desc limit 30`),
     pool.query(`select * from orders where status = 'entregue' and order_date = ${today} order by ready_at desc limit 100`),
     pool.query(
-      `select status, payment_method, count(*)::int as count, sum(total_cents)::int as total
+      `select paid_at is not null as paid, payment_method, count(*)::int as count, sum(total_cents)::int as total
        from orders where order_date = ${today} and status <> 'cancelado'
-       group by status, payment_method`,
+       group by 1, 2`,
     ),
   ]);
   return NextResponse.json({

@@ -16,32 +16,14 @@ function whatsappLink(order) {
   return `https://wa.me/${order.phone}?text=${encodeURIComponent(text)}`;
 }
 
-// Atualiza o resumo do dia na hora do toque, sem esperar a próxima leitura do servidor.
-function moveInSummary(rows, order, status) {
-  const out = rows.map((r) => ({ ...r }));
-  const from = out.find((r) => r.status === order.status && (r.payment_method ?? null) === (order.payment ?? null));
-  if (from) {
-    from.count -= 1;
-    from.total -= order.total;
-  }
-  const to = out.find((r) => r.status === status && (r.payment_method ?? null) === (order.payment ?? null));
-  if (to) {
-    to.count += 1;
-    to.total += order.total;
-  } else {
-    out.push({ status, payment_method: order.payment ?? null, count: 1, total: order.total });
-  }
-  return out.filter((r) => r.count > 0);
-}
-
-// Arrecadado = pedidos já entregues (pagos no balcão). A receber = na fila ou prontos.
+// Arrecadado = pedidos já pagos no balcão. A receber = pedidos aguardando pagamento.
 function DaySummary({ rows }) {
   const sum = (pred) => rows.filter(pred).reduce((n, r) => n + r.total, 0);
   const count = rows.reduce((n, r) => n + r.count, 0);
-  const received = sum((r) => r.status === 'entregue');
-  const pending = sum((r) => r.status !== 'entregue');
-  const byMethod = PAYMENT_METHODS.map((m) => [m.short, sum((r) => r.status === 'entregue' && r.payment_method === m.id)]);
-  const unknown = sum((r) => r.status === 'entregue' && !r.payment_method);
+  const received = sum((r) => r.paid);
+  const pending = sum((r) => !r.paid);
+  const byMethod = PAYMENT_METHODS.map((m) => [m.short, sum((r) => r.paid && r.payment_method === m.id)]);
+  const unknown = sum((r) => r.paid && !r.payment_method);
   if (unknown > 0) byMethod.push(['Sem forma', unknown]);
   return (
     <section className="day-summary" aria-label="Total do dia">
@@ -55,7 +37,7 @@ function DaySummary({ rows }) {
       <div>
         <span>A receber</span>
         <b>{formatPrice(pending)}</b>
-        <small>na fila e prontos</small>
+        <small>aguardando pagamento</small>
       </div>
       <div>
         <span>Total do dia</span>
@@ -63,6 +45,66 @@ function DaySummary({ rows }) {
         <small>{count} {count === 1 ? 'pedido' : 'pedidos'}</small>
       </div>
     </section>
+  );
+}
+
+function PayButton({ order, onPaid, onReceipt }) {
+  if (order.paidAt) {
+    return (
+      <button type="button" className="pay-state paid" onClick={() => onReceipt(order)} title="Ver notinha">
+        Pago
+      </button>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className="pay-state waiting"
+      onClick={() => {
+        const how = paymentLabel(order.payment) ?? 'forma não informada';
+        if (window.confirm(`Confirmar pagamento do pedido #${order.number}?\n${formatPrice(order.total)} · ${how}`)) onPaid(order);
+      }}
+    >
+      Aguardando pagamento
+    </button>
+  );
+}
+
+function receiptLines(order) {
+  const when = new Date(order.paidAt ?? order.createdAt);
+  return [
+    'BrasaBurg & Freeze',
+    `Notinha do pedido #${order.number}`,
+    `${when.toLocaleDateString('pt-BR')} ${when.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
+    `Cliente: ${order.name}`,
+    '------------------------------',
+    ...order.items.flatMap((i) => [
+      `${i.qty}x ${i.name} - ${formatPrice(i.unitPrice * i.qty)}`,
+      ...i.details.map((d) => `   ${d}`),
+    ]),
+    '------------------------------',
+    `Total: ${formatPrice(order.total)}`,
+    `Pagamento: ${paymentLabel(order.payment) ?? 'não informado'} - PAGO`,
+    'Obrigado pela preferência!',
+  ];
+}
+
+// Notinha mostrada no tablet; só pode ser enviada para o WhatsApp do próprio cliente do pedido.
+function Receipt({ order, onClose }) {
+  const lines = receiptLines(order);
+  const share = `https://wa.me/${order.phone}?text=${encodeURIComponent(lines.join('\n'))}`;
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={`Notinha do pedido #${order.number}`} onClick={onClose}>
+      <div className="modal receipt" onClick={(e) => e.stopPropagation()}>
+        <pre className="receipt-paper">{lines.join('\n')}</pre>
+        <div className="modal-actions">
+          <button type="button" className="btn btn-ghost" onClick={onClose}>Fechar</button>
+          <a className="btn btn-whats" href={share} target="_blank" rel="noreferrer">
+            Enviar para {order.name} no WhatsApp
+          </a>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -81,7 +123,7 @@ function beep(ctx) {
   });
 }
 
-function OrderCard({ order, now, onReady }) {
+function OrderCard({ order, now, onReady, onPaid, onReceipt }) {
   const elapsed = now - new Date(order.createdAt).getTime();
   const minutes = prepMinutes(order.items);
   const burgers = countBurgers(order.items);
@@ -121,6 +163,7 @@ function OrderCard({ order, now, onReady }) {
         </span>
         <b>{formatPrice(order.total)}</b>
       </p>
+      <PayButton order={order} onPaid={onPaid} onReceipt={onReceipt} />
       <a className="btn btn-big btn-ready" href={whatsappLink(order)} target="_blank" rel="noreferrer" onClick={() => onReady(order)}>
         Pedido Pronto e avisar no WhatsApp
       </a>
@@ -134,6 +177,7 @@ export default function KitchenBoard() {
   const [now, setNow] = useState(() => Date.now());
   const [online, setOnline] = useState(true);
   const [soundOn, setSoundOn] = useState(false);
+  const [receipt, setReceipt] = useState(null);
   const audioRef = useRef(null);
   const seenRef = useRef(null);
   const wakeRef = useRef(null);
@@ -176,12 +220,25 @@ export default function KitchenBoard() {
       if (status === 'novo') open.push({ ...order, status });
       if (status === 'entregue') delivered.unshift({ ...order, status });
       open.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-      return { ...d, open, ready, delivered, summary: moveInSummary(d.summary, order, status) };
+      return { ...d, open, ready, delivered };
     });
     await fetch(`/api/cozinha/orders/${order.id}`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ status }),
+    }).catch(() => {});
+    load();
+  };
+
+  const markPaid = async (order) => {
+    const paid = { ...order, paidAt: new Date().toISOString() };
+    const swap = (list) => list.map((o) => (o.id === order.id ? paid : o));
+    setData((d) => ({ ...d, open: swap(d.open), ready: swap(d.ready), delivered: swap(d.delivered) }));
+    setReceipt(paid);
+    await fetch(`/api/cozinha/orders/${order.id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ paid: true }),
     }).catch(() => {});
     load();
   };
@@ -228,7 +285,16 @@ export default function KitchenBoard() {
         {data.open.length === 0 ? (
           <p className="empty">Nenhum pedido na fila. Os novos aparecem aqui sozinhos.</p>
         ) : (
-          data.open.map((o) => <OrderCard key={o.id} order={o} now={serverNow} onReady={(x) => setStatus(x, 'pronto')} />)
+          data.open.map((o) => (
+            <OrderCard
+              key={o.id}
+              order={o}
+              now={serverNow}
+              onReady={(x) => setStatus(x, 'pronto')}
+              onPaid={markPaid}
+              onReceipt={setReceipt}
+            />
+          ))
         )}
       </section>
 
@@ -245,6 +311,7 @@ export default function KitchenBoard() {
                 </span>
                 <a href={whatsappLink(o)} target="_blank" rel="noreferrer" className="link">Reenviar WhatsApp</a>
                 <button type="button" className="link" onClick={() => setStatus(o, 'novo')}>Desfazer</button>
+                <PayButton order={o} onPaid={markPaid} onReceipt={setReceipt} />
                 <span className="ready-total">
                   {o.payment && <em className={`pay-badge ${o.payment}`}>{paymentLabel(o.payment, true)}</em>}
                   {formatPrice(o.total)}
@@ -277,12 +344,15 @@ export default function KitchenBoard() {
                   {o.payment && <em className={`pay-badge ${o.payment}`}>{paymentLabel(o.payment, true)}</em>}
                   {formatPrice(o.total)}
                 </span>
+                <PayButton order={o} onPaid={markPaid} onReceipt={setReceipt} />
                 <button type="button" className="link" onClick={() => setStatus(o, 'pronto')}>Voltar para prontos</button>
               </li>
             ))}
           </ul>
         </details>
       )}
+
+      {receipt && <Receipt order={receipt} onClose={() => setReceipt(null)} />}
     </div>
   );
 }

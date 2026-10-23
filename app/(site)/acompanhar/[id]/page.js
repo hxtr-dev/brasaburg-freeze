@@ -3,12 +3,39 @@
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import ThemeReset from '@/components/ThemeReset';
-import { formatPrice, paymentLabel } from '@/lib/menu';
+import { BURGERS, COMBOS, GELADINHOS, PAYMENT_METHODS, SAUCE, formatPrice, paymentLabel, priceFor } from '@/lib/menu';
+
+const CATALOG = new Map([...BURGERS, ...GELADINHOS, ...COMBOS, SAUCE].map((p) => [p.id, p]));
+
+// Total do pedido se o cliente trocar para outra forma de pagamento (o servidor confirma o valor).
+function totalFor(items, method) {
+  return items.reduce((sum, i) => {
+    const product = CATALOG.get(i.productId);
+    return sum + (product ? priceFor(product, method) : i.unitPrice) * i.qty;
+  }, 0);
+}
+
+function ItemList({ items }) {
+  return (
+    <ul className="cart-lines">
+      {items.map((i, n) => (
+        <li key={n}>
+          <div>
+            <b>{i.qty}× {i.name}</b>
+            {i.details.length > 0 && <small>{i.details.join(' · ')}</small>}
+          </div>
+          <span className="price">{formatPrice(i.unitPrice * i.qty)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default function AcompanharPage({ params }) {
   const { id } = use(params);
   const [order, setOrder] = useState(null);
   const [error, setError] = useState('');
+  const [changing, setChanging] = useState(false);
 
   useEffect(() => {
     let stop = false;
@@ -18,8 +45,9 @@ export default function AcompanharPage({ params }) {
         const res = await fetch(`/api/orders/${id}`, { cache: 'no-store' });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        if (!stop) setOrder(data);
-        if (data.status === 'novo' && !stop) timer = setTimeout(load, 5000);
+        if (stop) return;
+        setOrder(data);
+        if (data.status === 'novo' || !data.paidAt) timer = setTimeout(load, 5000);
       } catch (err) {
         if (!stop) setError(err.message || 'Não foi possível carregar o pedido.');
         if (!stop) timer = setTimeout(load, 10000);
@@ -32,45 +60,112 @@ export default function AcompanharPage({ params }) {
     };
   }, [id]);
 
-  const ready = order && order.status !== 'novo';
+  const changePayment = async (payment) => {
+    if (payment === order.payment) return;
+    setChanging(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/orders/${id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ payment }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Não foi possível trocar a forma de pagamento.');
+      setOrder(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setChanging(false);
+    }
+  };
+
+  if (!order) {
+    return (
+      <div className="narrow">
+        <ThemeReset theme="brasa" />
+        <div className="panel-form ticket">
+          <p>{error || 'Carregando seu pedido…'}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Enquanto o balcão não confirma o pagamento, o cliente vê o valor e pode trocar a forma de pagamento.
+  if (!order.paidAt) {
+    const pixTotal = totalFor(order.items, 'pix');
+    return (
+      <div className="narrow">
+        <ThemeReset theme="freeze" />
+        <div className="panel-form ticket">
+          <p className="kicker">Pedido recebido</p>
+          <p className="pay-waiting" aria-live="polite">Aguardando pagamento</p>
+          <p>
+            {order.name}, vá ao balcão de retirada e pague <b>{formatPrice(order.total)}</b>
+            {order.payment ? ` no ${paymentLabel(order.payment, true)}` : ''}. Assim que o pagamento for confirmado,
+            o número do seu pedido aparece aqui.
+          </p>
+
+          <fieldset className="pay-options">
+            <legend>
+              Forma de pagamento <span>(pagamento feito apenas no balcão de retirada)</span>
+            </legend>
+            {PAYMENT_METHODS.map((m) => (
+              <label key={m.id} className={`pay-option ${order.payment === m.id ? 'on' : ''}`}>
+                <input
+                  type="radio"
+                  name="payment"
+                  value={m.id}
+                  checked={order.payment === m.id}
+                  disabled={changing}
+                  onChange={() => changePayment(m.id)}
+                />
+                <span className="pay-name">
+                  {m.label}
+                  {m.id === 'pix' && <em>Mais barato</em>}
+                </span>
+                <b>{formatPrice(totalFor(order.items, m.id))}</b>
+              </label>
+            ))}
+            {order.payment !== 'pix' && pixTotal < order.total && (
+              <p className="pay-hint">No Pix este pedido sai por {formatPrice(pixTotal)}.</p>
+            )}
+          </fieldset>
+          {error && <p className="form-error" role="alert">{error}</p>}
+
+          <ItemList items={order.items} />
+          <div className="cart-total">
+            <span>Total{order.payment ? ` no ${paymentLabel(order.payment, true)}` : ''}</span>
+            <b>{formatPrice(order.total)}</b>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const ready = order.status !== 'novo';
   return (
     <div className="narrow">
       <ThemeReset theme={ready ? 'freeze' : 'brasa'} />
       <div className="panel-form ticket">
-        {!order ? (
-          <p>{error || 'Carregando seu pedido…'}</p>
-        ) : (
-          <>
-            <p className="kicker">Pedido enviado para a cozinha</p>
-            <p className="ticket-number">#{order.number}</p>
-            <p className={`ticket-status ${ready ? 'is-ready' : ''}`} aria-live="polite">
-              {order.status === 'novo' && 'Preparando seu pedido…'}
-              {order.status === 'pronto' && 'Pronto! Pode retirar no balcão.'}
-              {order.status === 'entregue' && 'Pedido entregue. Bom apetite!'}
-              {order.status === 'cancelado' && 'Pedido cancelado. Fale com o balcão.'}
-            </p>
-            <p>
-              {order.name}, guarde este número. Quando o pedido ficar pronto, esta tela muda e avisamos no seu WhatsApp.
-            </p>
-            <ul className="cart-lines">
-              {order.items.map((i, n) => (
-                <li key={n}>
-                  <div>
-                    <b>{i.qty}× {i.name}</b>
-                    {i.details.length > 0 && <small>{i.details.join(' · ')}</small>}
-                  </div>
-                  <span className="price">{formatPrice(i.unitPrice * i.qty)}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="cart-total">
-              <span>Total{order.payment ? ` no ${paymentLabel(order.payment, true)}` : ''}</span>
-              <b>{formatPrice(order.total)}</b>
-            </div>
-            <p className="pay-note">Pagamento feito apenas no balcão de retirada.</p>
-            <Link href="/pedido" className="btn btn-ghost">Fazer outro pedido</Link>
-          </>
-        )}
+        <p className="kicker">Pedido enviado para a cozinha</p>
+        <p className="ticket-number">#{order.number}</p>
+        <p className={`ticket-status ${ready ? 'is-ready' : ''}`} aria-live="polite">
+          {order.status === 'novo' && 'Preparando seu pedido…'}
+          {order.status === 'pronto' && 'Pronto! Pode retirar no balcão.'}
+          {order.status === 'entregue' && 'Pedido entregue. Bom apetite!'}
+          {order.status === 'cancelado' && 'Pedido cancelado. Fale com o balcão.'}
+        </p>
+        <p>
+          {order.name}, guarde este número. Quando o pedido ficar pronto, esta tela muda e avisamos no seu WhatsApp.
+        </p>
+        <ItemList items={order.items} />
+        <div className="cart-total">
+          <span>Total{order.payment ? ` no ${paymentLabel(order.payment, true)}` : ''}</span>
+          <b>{formatPrice(order.total)}</b>
+        </div>
+        <p className="pay-done">Pago</p>
+        <Link href="/pedido" className="btn btn-ghost">Fazer outro pedido</Link>
       </div>
     </div>
   );

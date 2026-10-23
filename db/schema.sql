@@ -17,4 +17,7 @@ create table if not exists orders (
 -- Forma de pagamento escolhida pelo cliente (pix, debito, credito); pagamento no balcão.
 alter table orders add column if not exists payment_method text;
 
+-- Quando a equipe confirmou o pagamento no balcão (null = aguardando pagamento).
+alter table orders add column if not exists paid_at timestamptz;
+
 create index if not exists orders_status_created_idx on orders (status, created_at);
