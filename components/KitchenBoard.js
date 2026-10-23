@@ -1,10 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PAYMENT_METHODS, formatPrice, paymentLabel } from '@/lib/menu';
+import { PAYMENT_METHODS, countBurgers, formatPrice, paymentLabel, prepMinutes } from '@/lib/menu';
 import { formatPhone } from '@/lib/phone';
 
-const LIMIT_MS = 15 * 60 * 1000;
 const POLL_MS = 4000;
 
 function clock(ms) {
@@ -84,9 +83,12 @@ function beep(ctx) {
 
 function OrderCard({ order, now, onReady }) {
   const elapsed = now - new Date(order.createdAt).getTime();
-  const left = LIMIT_MS - elapsed;
+  const minutes = prepMinutes(order.items);
+  const burgers = countBurgers(order.items);
+  const limitMs = minutes * 60 * 1000;
+  const left = limitMs - elapsed;
   const level = left < 0 ? 'late' : left < 5 * 60 * 1000 ? 'warn' : 'ok';
-  const pct = Math.max(0, Math.min(100, (left / LIMIT_MS) * 100));
+  const pct = Math.max(0, Math.min(100, (left / limitMs) * 100));
   return (
     <article className={`ticket-card ${level}`}>
       <header>
@@ -101,6 +103,7 @@ function OrderCard({ order, now, onReady }) {
       </p>
       <p className="ticket-time">
         Chegou às {new Date(order.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+        {' · '}prazo {minutes} min{burgers > 1 ? ` (${burgers} hambúrgueres)` : ''}
         {left < 0 ? ' · atrasado' : ''}
       </p>
       <ul>
