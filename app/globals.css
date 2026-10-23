@@ -970,6 +970,25 @@ input:focus {
   border: 2px solid #2d6b3f;
 }
 
+.ticket-card.waiting {
+  border-color: rgba(47, 168, 255, 0.55);
+}
+
+.waiting .ticket-timer {
+  color: var(--muted);
+}
+
+.waiting .ticket-bar span {
+  background: rgba(47, 168, 255, 0.5);
+}
+
+.ticket-paused {
+  margin: 0;
+  color: #8fd8ff;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 .ticket-card.warn {
   border-color: #e0a100;
 }

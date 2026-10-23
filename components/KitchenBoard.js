@@ -124,18 +124,19 @@ function beep(ctx) {
 }
 
 function OrderCard({ order, now, onReady, onPaid, onReceipt }) {
-  const elapsed = now - new Date(order.createdAt).getTime();
+  // O cronômetro só começa quando a cozinha confirma o pagamento; até lá fica parado no prazo cheio.
   const minutes = prepMinutes(order.items);
   const burgers = countBurgers(order.items);
   const limitMs = minutes * 60 * 1000;
+  const elapsed = order.paidAt ? Math.max(0, now - new Date(order.paidAt).getTime()) : 0;
   const left = limitMs - elapsed;
-  const level = left < 0 ? 'late' : left < 5 * 60 * 1000 ? 'warn' : 'ok';
+  const level = !order.paidAt ? 'waiting' : left < 0 ? 'late' : left < 5 * 60 * 1000 ? 'warn' : 'ok';
   const pct = Math.max(0, Math.min(100, (left / limitMs) * 100));
   return (
     <article className={`ticket-card ${level}`}>
       <header>
         <span className="ticket-num">#{order.number}</span>
-        <span className="ticket-timer" aria-label="Tempo restante">
+        <span className="ticket-timer" aria-label={order.paidAt ? 'Tempo restante' : 'Cronômetro parado até o pagamento'}>
           {left < 0 ? `+${clock(left)}` : clock(left)}
         </span>
       </header>
@@ -148,6 +149,7 @@ function OrderCard({ order, now, onReady, onPaid, onReceipt }) {
         {' · '}prazo {minutes} min{burgers > 1 ? ` (${burgers} hambúrgueres)` : ''}
         {left < 0 ? ' · atrasado' : ''}
       </p>
+      {!order.paidAt && <p className="ticket-paused">Cronômetro parado até confirmar o pagamento</p>}
       <ul>
         {order.items.map((i, n) => (
           <li key={n}>
