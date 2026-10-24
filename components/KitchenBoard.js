@@ -108,6 +108,88 @@ function Receipt({ order, onClose }) {
   );
 }
 
+const STATUS_LABEL = { novo: 'Na fila', pronto: 'Pronto', entregue: 'Entregue', cancelado: 'Cancelado' };
+
+// Painel lateral com todos os pedidos do dia, para conferir no fim do expediente.
+function AllOrders({ onClose, onPaid, onReceipt, version }) {
+  const [orders, setOrders] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let stop = false;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/cozinha/orders/dia', { cache: 'no-store' });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error);
+        if (!stop) {
+          setOrders(json.orders);
+          setError('');
+        }
+      } catch {
+        if (!stop) setError('Não foi possível carregar os pedidos. Tentando de novo…');
+      }
+    };
+    load();
+    const t = setInterval(load, 10000);
+    return () => {
+      stop = true;
+      clearInterval(t);
+    };
+  }, [version]);
+
+  const list = orders ?? [];
+  const valid = list.filter((o) => o.status !== 'cancelado');
+  const paid = valid.filter((o) => o.paidAt);
+  const sum = (arr) => arr.reduce((n, o) => n + o.total, 0);
+
+  return (
+    <div className="drawer-backdrop" onClick={onClose}>
+      <aside className="drawer" role="dialog" aria-modal="true" aria-label="Todos os pedidos de hoje" onClick={(e) => e.stopPropagation()}>
+        <header className="drawer-head">
+          <h2>Pedidos de hoje ({list.length})</h2>
+          <button type="button" className="btn-x" aria-label="Fechar" onClick={onClose}>×</button>
+        </header>
+        <div className="drawer-totals">
+          <span>
+            Pagos: <b className="ok">{paid.length} · {formatPrice(sum(paid))}</b>
+          </span>
+          <span>
+            Aguardando: <b className="wait">{valid.length - paid.length} · {formatPrice(sum(valid) - sum(paid))}</b>
+          </span>
+        </div>
+        {error && <p className="form-error">{error}</p>}
+        {!orders && !error && <p className="muted">Carregando…</p>}
+        {orders && list.length === 0 && <p className="muted">Nenhum pedido hoje ainda.</p>}
+        <ul className="all-orders">
+          {list.map((o) => (
+            <li key={o.id} className={o.status === 'cancelado' ? 'cancelled' : ''}>
+              <div className="all-top">
+                <span className="ticket-num">#{o.number}</span>
+                <span className="all-who">
+                  <b>{o.name}</b>
+                  <small>
+                    {new Date(o.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ·{' '}
+                    {STATUS_LABEL[o.status] ?? o.status}
+                  </small>
+                </span>
+                <span className="ready-total">
+                  {o.payment && <em className={`pay-badge ${o.payment}`}>{paymentLabel(o.payment, true)}</em>}
+                  {formatPrice(o.total)}
+                </span>
+              </div>
+              <p className="all-items">
+                {o.items.map((i) => `${i.qty}× ${i.name}${i.details.length ? ` (${i.details.join(', ')})` : ''}`).join(' · ')}
+              </p>
+              <PayButton order={o} onPaid={onPaid} onReceipt={onReceipt} />
+            </li>
+          ))}
+        </ul>
+      </aside>
+    </div>
+  );
+}
+
 function beep(ctx) {
   const now = ctx.currentTime;
   [0, 0.18, 0.36].forEach((t, i) => {
@@ -180,6 +262,8 @@ export default function KitchenBoard() {
   const [online, setOnline] = useState(true);
   const [soundOn, setSoundOn] = useState(false);
   const [receipt, setReceipt] = useState(null);
+  const [showAll, setShowAll] = useState(false);
+  const [paidVersion, setPaidVersion] = useState(0);
   const audioRef = useRef(null);
   const seenRef = useRef(null);
   const wakeRef = useRef(null);
@@ -242,6 +326,7 @@ export default function KitchenBoard() {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ paid: true }),
     }).catch(() => {});
+    setPaidVersion((v) => v + 1);
     load();
   };
 
@@ -278,6 +363,15 @@ export default function KitchenBoard() {
           {!soundOn && (
             <button type="button" className="btn" onClick={enableSound}>Ativar som e tela cheia</button>
           )}
+          <button
+            type="button"
+            className="btn-plus"
+            aria-label="Ver todos os pedidos de hoje"
+            title="Todos os pedidos de hoje"
+            onClick={() => setShowAll(true)}
+          >
+            +
+          </button>
         </div>
       </header>
 
@@ -354,6 +448,9 @@ export default function KitchenBoard() {
         </details>
       )}
 
+      {showAll && (
+        <AllOrders onClose={() => setShowAll(false)} onPaid={markPaid} onReceipt={setReceipt} version={paidVersion} />
+      )}
       {receipt && <Receipt order={receipt} onClose={() => setReceipt(null)} />}
     </div>
   );

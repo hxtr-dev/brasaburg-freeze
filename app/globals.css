@@ -970,6 +970,125 @@ input:focus {
   border: 2px solid #2d6b3f;
 }
 
+.btn-plus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  color: #111;
+  font: 600 2rem/1 var(--font-body), sans-serif;
+  cursor: pointer;
+}
+
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(560px, 100%);
+  padding: 20px;
+  overflow-y: auto;
+  background: #141316;
+  border-left: 1px solid var(--line);
+  animation: drawer-in 0.25s ease-out;
+}
+
+@keyframes drawer-in {
+  from {
+    transform: translateX(40px);
+    opacity: 0;
+  }
+}
+
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.drawer-head h2 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.drawer-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.drawer-totals .ok {
+  color: #3ddc84;
+}
+
+.drawer-totals .wait {
+  color: #8fd8ff;
+}
+
+.all-orders {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.all-orders li {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.all-orders li.cancelled {
+  opacity: 0.45;
+}
+
+.all-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.all-top .ticket-num {
+  font-size: 1.8rem;
+}
+
+.all-who {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.all-who small,
+.all-items {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.all-items {
+  margin: 0;
+}
+
+.all-orders .pay-state {
+  align-self: flex-start;
+}
+
 .ticket-card.waiting {
   border-color: rgba(47, 168, 255, 0.55);
 }
