@@ -2269,3 +2269,27 @@ input:focus {
   background: rgba(14, 24, 40, 0.96);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
 }
+
+.pix-box {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  text-align: center;
+}
+.pix-box p,
+.pix-box small {
+  margin: 0;
+}
+.pix-box .btn {
+  width: 100%;
+}
+.pix-qr {
+  width: 240px;
+  height: 240px;
+  border-radius: 16px;
+  background: #fff;
+  padding: 8px;
+}
+.pix-card {
+  margin-top: 6px;
+}

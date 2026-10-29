@@ -26,6 +26,25 @@ export default function AcompanharPage({ params }) {
   const [order, setOrder] = useState(null);
   const [error, setError] = useState('');
   const [payingOnline, setPayingOnline] = useState(false);
+  const [pix, setPix] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/orders/${id}/pix`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setPix)
+      .catch(() => {});
+  }, [id]);
+
+  const copyPix = async () => {
+    try {
+      await navigator.clipboard.writeText(pix.payload);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      setError('Não deu para copiar. Segure o código e copie à mão.');
+    }
+  };
 
   useEffect(() => {
     let stop = false;
@@ -97,15 +116,33 @@ export default function AcompanharPage({ params }) {
         <div className="panel-form ticket">
           <p className="kicker">Pedido recebido</p>
           <p className="pay-waiting" aria-live="polite">Aguardando pagamento</p>
-          <div className="pay-split-online">
-            <p>
-              {order.name}, falta só o pagamento de <b>{formatPrice(order.total)}</b>. Pague pelo site com Pix, débito ou
-              crédito. Assim que for confirmado, o número do seu pedido aparece aqui.
-            </p>
-            <button type="button" className="btn btn-big pay-online-btn" onClick={payOnline} disabled={payingOnline}>
-              {payingOnline ? 'Abrindo pagamento…' : `Pagar ${formatPrice(order.total)} pelo site`}
-            </button>
-          </div>
+          {pix ? (
+            <div className="pix-box">
+              <p>
+                {order.name}, falta só o pagamento de <b>{formatPrice(order.total)}</b>. Pague com Pix: abra o app do seu
+                banco e leia o QR code, ou use o Pix copia e cola.
+              </p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className="pix-qr" src={pix.qr} alt="QR code do Pix" width="240" height="240" />
+              <button type="button" className="btn btn-big" onClick={copyPix}>
+                {copied ? 'Código copiado ✓' : 'Copiar Pix copia e cola'}
+              </button>
+              <small>Recebedor: {pix.name}. Depois de pagar, é só esperar: assim que a cozinha confirmar, o número do seu pedido aparece aqui.</small>
+              <button type="button" className="btn btn-ghost pix-card" onClick={payOnline} disabled={payingOnline}>
+                {payingOnline ? 'Abrindo pagamento…' : 'Prefere pagar com cartão?'}
+              </button>
+            </div>
+          ) : (
+            <div className="pay-split-online">
+              <p>
+                {order.name}, falta só o pagamento de <b>{formatPrice(order.total)}</b>. Pague pelo site com Pix, débito ou
+                crédito. Assim que for confirmado, o número do seu pedido aparece aqui.
+              </p>
+              <button type="button" className="btn btn-big pay-online-btn" onClick={payOnline} disabled={payingOnline}>
+                {payingOnline ? 'Abrindo pagamento…' : `Pagar ${formatPrice(order.total)} pelo site`}
+              </button>
+            </div>
+          )}
           {error && <p className="form-error" role="alert">{error}</p>}
 
           <ItemList items={order.items} />
