@@ -7,6 +7,9 @@ const CartContext = createContext(null);
 const CART_KEY = 'brasaburg:carrinho';
 const CUSTOMER_KEY = 'brasaburg:cliente';
 
+const GELADINHO_IDS = new Set(GELADINHOS.map((g) => g.id));
+const GELADINHO_COMBO = COMBOS.find((c) => c.geladinhos === 2 && c.burgers.length === 0);
+
 const CATALOG = new Map([...BURGERS, ...GELADINHOS, ...COMBOS, SAUCE].map((p) => [p.id, p]));
 
 function read(key, fallback) {
@@ -59,6 +62,29 @@ export function CartProvider({ children }) {
 
   const clear = useCallback(() => setLines([]), []);
 
+  // Troca 2 geladinhos avulsos (mantendo os sabores) pelo Combo Freeze em Dupla.
+  const swapGeladinhosForCombo = useCallback(() => {
+    setLines((prev) => {
+      const flavors = [];
+      for (const l of prev) {
+        if (!GELADINHO_IDS.has(l.productId)) continue;
+        for (let i = 0; i < l.qty && flavors.length < 2; i++) flavors.push(l.productId);
+      }
+      if (flavors.length < 2) return prev;
+      let next = prev;
+      for (const id of flavors) {
+        next = next
+          .map((l) => (l.productId === id && l.qty > 0 ? { ...l, qty: l.qty - 1 } : l))
+          .filter((l) => l.qty > 0 || l.productId !== id);
+      }
+      const comboId = GELADINHO_COMBO.id;
+      const key = lineKey(comboId, flavors);
+      const found = next.find((l) => l.key === key);
+      if (found) return next.map((l) => (l.key === key ? { ...l, qty: Math.min(20, l.qty + 1) } : l));
+      return [...next, { key, productId: comboId, flavors, qty: 1 }];
+    });
+  }, []);
+
   const setCustomer = useCallback((c) => {
     setCustomerState(c);
     write(CUSTOMER_KEY, c);
@@ -75,13 +101,16 @@ export function CartProvider({ children }) {
       lines: detailed,
       count: detailed.reduce((n, l) => n + l.qty, 0),
       total: detailed.reduce((n, l) => n + l.subtotal, 0),
+      looseGeladinhos: detailed.filter((l) => GELADINHO_IDS.has(l.productId)).reduce((n, l) => n + l.qty, 0),
+      combo: GELADINHO_COMBO,
+      swapGeladinhosForCombo,
       add,
       setQty,
       clear,
       customer,
       setCustomer,
     };
-  }, [lines, ready, add, setQty, clear, customer, setCustomer]);
+  }, [lines, ready, add, setQty, clear, swapGeladinhosForCombo, customer, setCustomer]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

@@ -145,6 +145,30 @@ function ComboPicker({ combo, onClose, onConfirm }) {
   );
 }
 
+function ComboSuggestion({ floating = false, onSwapped }) {
+  const { looseGeladinhos, combo, swapGeladinhosForCombo } = useCart();
+  if (looseGeladinhos < 2) return null;
+  const savings = combo.geladinhos * GELADINHOS[0].price - combo.price;
+  return (
+    <div className={`combo-tip ${floating ? 'floating' : ''}`} role="status">
+      <p>
+        <b>Dica:</b> 2 geladinhos saem por <b>{formatPrice(combo.price)}</b> no {combo.name}
+        {savings > 0 ? ` (você economiza ${formatPrice(savings)})` : ''}.
+      </p>
+      <button
+        type="button"
+        className="btn"
+        onClick={() => {
+          swapGeladinhosForCombo();
+          onSwapped?.();
+        }}
+      >
+        Trocar pelo combo
+      </button>
+    </div>
+  );
+}
+
 function CartSheet({ open, onClose, soldOut }) {
   const { lines, total, setQty } = useCart();
   const router = useRouter();
@@ -175,6 +199,7 @@ function CartSheet({ open, onClose, soldOut }) {
             ))}
           </ul>
         )}
+        <ComboSuggestion />
         <div className="cart-total">
           <span>Total</span>
           <b>{formatPrice(total)}</b>
@@ -284,6 +309,7 @@ export default function PedidoPage() {
         </div>
       </section>
 
+      {count > 0 && !cartOpen && <ComboSuggestion floating />}
       {count > 0 && (
         <button type="button" className="cart-bar" onClick={() => setCartOpen(true)}>
           <span>{count} {count === 1 ? 'item' : 'itens'}</span>

@@ -2237,3 +2237,35 @@ input:focus {
   width: 100%;
   margin: 14px 0 6px;
 }
+
+.combo-tip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(120, 200, 255, 0.45);
+  border-radius: 16px;
+  background: rgba(60, 140, 220, 0.14);
+  font-size: 0.92rem;
+}
+.combo-tip p {
+  margin: 0;
+}
+.combo-tip .btn {
+  flex: none;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+}
+.combo-tip.floating {
+  position: fixed;
+  left: 50%;
+  bottom: 84px;
+  transform: translateX(-50%);
+  z-index: 30;
+  width: min(560px, calc(100% - 32px));
+  margin: 0;
+  background: rgba(14, 24, 40, 0.96);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
