@@ -3,17 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import ThemeReset from '@/components/ThemeReset';
-import { BURGERS, COMBOS, GELADINHOS, PAYMENT_METHODS, SAUCE, formatPrice, paymentLabel, priceFor } from '@/lib/menu';
-
-const CATALOG = new Map([...BURGERS, ...GELADINHOS, ...COMBOS, SAUCE].map((p) => [p.id, p]));
-
-// Total do pedido se o cliente trocar para outra forma de pagamento (o servidor confirma o valor).
-function totalFor(items, method) {
-  return items.reduce((sum, i) => {
-    const product = CATALOG.get(i.productId);
-    return sum + (product ? priceFor(product, method) : i.unitPrice) * i.qty;
-  }, 0);
-}
+import { PAYMENT_METHODS, formatPrice, paymentLabel } from '@/lib/menu';
 
 function ItemList({ items }) {
   return (
@@ -93,7 +83,6 @@ export default function AcompanharPage({ params }) {
 
   // Enquanto o balcão não confirma o pagamento, o cliente vê o valor e pode trocar a forma de pagamento.
   if (!order.paidAt) {
-    const pixTotal = totalFor(order.items, 'pix');
     return (
       <div className="narrow">
         <ThemeReset theme="freeze" />
@@ -120,16 +109,9 @@ export default function AcompanharPage({ params }) {
                   disabled={changing}
                   onChange={() => changePayment(m.id)}
                 />
-                <span className="pay-name">
-                  {m.label}
-                  {m.id === 'pix' && <em>Mais barato</em>}
-                </span>
-                <b>{formatPrice(totalFor(order.items, m.id))}</b>
+                <span className="pay-name">{m.label}</span>
               </label>
             ))}
-            {order.payment !== 'pix' && pixTotal < order.total && (
-              <p className="pay-hint">No Pix este pedido sai por {formatPrice(pixTotal)}.</p>
-            )}
           </fieldset>
           {error && <p className="form-error" role="alert">{error}</p>}
 

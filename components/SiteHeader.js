@@ -16,6 +16,7 @@ export default function SiteHeader() {
       </Link>
       <nav>
         <Link href="/" className="nav-home">Início</Link>
+        <Link href="/codigo" className="nav-home">Código</Link>
         <Link href="/pedido" className="nav-cta">
           Pedir{count > 0 ? ` · ${count}` : ''}
           {count > 0 && <span className="nav-total"> · {formatPrice(total)}</span>}

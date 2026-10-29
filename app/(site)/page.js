@@ -8,7 +8,7 @@ export default function Home() {
     <>
       <ThemeReset />
       <section className="hero">
-        <p className="kicker">Hambúrgueres premium · Geladinhos gourmet</p>
+        <p className="kicker">Geladinhos gourmet · Hambúrgueres premium</p>
         <h1>
           <span className="fire">Do fogo</span> <span className="ice">ao gelo</span>
         </h1>
@@ -18,27 +18,27 @@ export default function Home() {
         </p>
         <div className="hero-actions">
           <Link href="/pedido" className="btn btn-big">Fazer meu pedido</Link>
-          <a href="#brasa" className="btn btn-ghost">Conhecer os produtos</a>
+          <a href="#freeze" className="btn btn-ghost">Conhecer os produtos</a>
         </div>
         <p className="scroll-cue" aria-hidden="true">role para baixo</p>
       </section>
 
       <StickyShowcase
-        id="brasa"
-        theme="brasa"
-        kicker="01 · Brasa"
-        title="Hambúrgueres"
-        intro="Pão brioche, hambúrguer de carne e cheddar. Quatro receitas, do clássico ao mais completo. Molho da casa à parte por R$ 2,49 (já incluso no Brasa Supreme)."
-        products={BURGERS}
-      />
-
-      <StickyShowcase
         id="freeze"
         theme="freeze"
-        kicker="02 · Freeze"
+        kicker="01 · Freeze"
         title="Geladinhos gourmet"
         intro="Cremosos e bem gelados, para fechar o lanche ou para uma pausa no calor."
         products={GELADINHOS}
+      />
+
+      <StickyShowcase
+        id="brasa"
+        theme="brasa"
+        kicker="02 · Brasa"
+        title="Hambúrgueres"
+        intro="Pão brioche, hambúrguer de carne e cheddar. Quatro receitas, do clássico ao mais completo. Molho da casa à parte por R$ 2,49 (já incluso no Brasa Supreme)."
+        products={BURGERS}
       />
 
       <section className="final-cta">

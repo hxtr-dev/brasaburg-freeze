@@ -68,14 +68,13 @@ export function CartProvider({ children }) {
     const detailed = lines.map((l) => {
       const product = CATALOG.get(l.productId);
       const flavorNames = l.flavors.map((id) => GELADINHOS.find((g) => g.id === id)?.shortName).filter(Boolean);
-      return { ...l, product, flavorNames, subtotal: product.price * l.qty, subtotalPix: product.pixPrice * l.qty };
+      return { ...l, product, flavorNames, subtotal: product.price * l.qty };
     });
     return {
       ready,
       lines: detailed,
       count: detailed.reduce((n, l) => n + l.qty, 0),
       total: detailed.reduce((n, l) => n + l.subtotal, 0),
-      totalPix: detailed.reduce((n, l) => n + l.subtotalPix, 0),
       add,
       setQty,
       clear,

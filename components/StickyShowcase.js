@@ -2,13 +2,16 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { formatPrice } from '@/lib/menu';
+import { formatPrice, needsBurger } from '@/lib/menu';
 import PriceTag from './PriceTag';
 import ProductPhoto from './ProductPhoto';
+import { useBurgersSoldOut } from './useSoldOut';
 
 // Sticky scroll: a foto fica parada enquanto os textos dos produtos passam ao lado.
 export default function StickyShowcase({ id, theme, kicker, title, intro, products }) {
   const [active, setActive] = useState(0);
+  const burgersSoldOut = useBurgersSoldOut();
+  const isOut = (p) => burgersSoldOut && needsBurger(p.id);
   const panelsRef = useRef([]);
   const sectionRef = useRef(null);
 
@@ -43,8 +46,9 @@ export default function StickyShowcase({ id, theme, kicker, title, intro, produc
       </header>
       <div className="showcase-grid">
         <div className="stage">
-          <figure key={products[active].id} className="stage-photo">
+          <figure key={products[active].id} className={`stage-photo ${isOut(products[active]) ? 'sold-out' : ''}`}>
             <ProductPhoto product={products[active]} className="stage-img" />
+            {isOut(products[active]) && <span className="sold-out-tag">Sold out</span>}
             <figcaption>
               <span>{products[active].name}</span>
               <b>{formatPrice(products[active].price)}</b>
@@ -80,7 +84,11 @@ export default function StickyShowcase({ id, theme, kicker, title, intro, produc
               </dl>
               <div className="panel-buy">
                 <PriceTag product={p} />
-                <Link href={`/pedido#${p.id}`} className="btn">Pedir este</Link>
+                {isOut(p) ? (
+                  <span className="sold-out-tag inline">Sold out</span>
+                ) : (
+                  <Link href={`/pedido#${p.id}`} className="btn">Pedir este</Link>
+                )}
               </div>
             </article>
           ))}

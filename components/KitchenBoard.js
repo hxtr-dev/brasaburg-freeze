@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PAYMENT_METHODS, countBurgers, formatPrice, paymentLabel, prepMinutes } from '@/lib/menu';
 import { formatPhone } from '@/lib/phone';
+import Referrals from './Referrals';
 
 const POLL_MS = 4000;
 
@@ -264,6 +265,8 @@ export default function KitchenBoard() {
   const [receipt, setReceipt] = useState(null);
   const [showAll, setShowAll] = useState(false);
   const [paidVersion, setPaidVersion] = useState(0);
+  const [view, setView] = useState('cozinha');
+  const [burgersSoldOut, setBurgersSoldOut] = useState(false);
   const audioRef = useRef(null);
   const seenRef = useRef(null);
   const wakeRef = useRef(null);
@@ -330,6 +333,28 @@ export default function KitchenBoard() {
     load();
   };
 
+  useEffect(() => {
+    fetch('/api/cardapio', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => setBurgersSoldOut(d.burgersSoldOut === true))
+      .catch(() => {});
+  }, []);
+
+  const toggleSoldOut = async () => {
+    const next = !burgersSoldOut;
+    const msg = next
+      ? 'Marcar os hambúrgueres como SOLD OUT? Os clientes não vão conseguir pedir hambúrguer, combos com hambúrguer nem molho.'
+      : 'Liberar os hambúrgueres de novo no site?';
+    if (!window.confirm(msg)) return;
+    const res = await fetch('/api/cozinha/cardapio', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ burgersSoldOut: next }),
+    }).catch(() => null);
+    if (res?.ok) setBurgersSoldOut(next);
+    else window.alert('Não foi possível mudar agora. Tente de novo.');
+  };
+
   // Som e tela sempre ligada só podem ser ativados por um toque.
   const enableSound = async () => {
     const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -375,77 +400,106 @@ export default function KitchenBoard() {
         </div>
       </header>
 
-      <DaySummary rows={data.summary} />
+      <nav className="kitchen-tabs" aria-label="Seções da cozinha">
+        <button type="button" className={view === 'cozinha' ? 'on' : ''} onClick={() => setView('cozinha')}>
+          Cozinha
+        </button>
+        <button type="button" className={view === 'indicacoes' ? 'on' : ''} onClick={() => setView('indicacoes')}>
+          Indicações
+        </button>
+      </nav>
 
-      <section className="queue" aria-label="Pedidos na fila">
-        {data.open.length === 0 ? (
-          <p className="empty">Nenhum pedido na fila. Os novos aparecem aqui sozinhos.</p>
-        ) : (
-          data.open.map((o) => (
-            <OrderCard
-              key={o.id}
-              order={o}
-              now={serverNow}
-              onReady={(x) => setStatus(x, 'pronto')}
-              onPaid={markPaid}
-              onReceipt={setReceipt}
-            />
-          ))
-        )}
-      </section>
+      {view === 'indicacoes' ? (
+        <Referrals />
+      ) : (
+        <>
+          <div className={`soldout-bar ${burgersSoldOut ? 'is-out' : ''}`}>
+            <span>
+              Hambúrgueres: <b>{burgersSoldOut ? 'SOLD OUT' : 'disponíveis'}</b>
+              <small>
+                {burgersSoldOut
+                  ? 'Hambúrgueres, combos com hambúrguer e molho estão bloqueados no site.'
+                  : 'Todos os produtos estão liberados no site.'}
+              </small>
+            </span>
+            <button type="button" className="btn" onClick={toggleSoldOut}>
+              {burgersSoldOut ? 'Liberar hambúrgueres' : 'Marcar sold out'}
+            </button>
+          </div>
 
-      {data.ready.length > 0 && (
-        <section className="ready-list" aria-label="Prontos hoje">
-          <h2>Prontos hoje</h2>
-          <ul>
-            {data.ready.map((o) => (
-              <li key={o.id}>
-                <span className="ticket-num">#{o.number}</span>
-                <span>{o.name}</span>
-                <span className="muted">
-                  pronto às {new Date(o.readyAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                </span>
-                <a href={whatsappLink(o)} target="_blank" rel="noreferrer" className="link">Reenviar WhatsApp</a>
-                <button type="button" className="link" onClick={() => setStatus(o, 'novo')}>Desfazer</button>
-                <PayButton order={o} onPaid={markPaid} onReceipt={setReceipt} />
-                <span className="ready-total">
-                  {o.payment && <em className={`pay-badge ${o.payment}`}>{paymentLabel(o.payment, true)}</em>}
-                  {formatPrice(o.total)}
-                </span>
-                <button
-                  type="button"
-                  className="btn-x"
-                  aria-label={`Pedido #${o.number} entregue, tirar da lista`}
-                  title="Entregue: tirar da lista"
-                  onClick={() => setStatus(o, 'entregue')}
-                >
-                  ×
-                </button>
-              </li>
-            ))}
-          </ul>
-          <p className="ready-hint">Toque no × quando o cliente retirar o pedido.</p>
+        <DaySummary rows={data.summary} />
+
+        <section className="queue" aria-label="Pedidos na fila">
+          {data.open.length === 0 ? (
+            <p className="empty">Nenhum pedido na fila. Os novos aparecem aqui sozinhos.</p>
+          ) : (
+            data.open.map((o) => (
+              <OrderCard
+                key={o.id}
+                order={o}
+                now={serverNow}
+                onReady={(x) => setStatus(x, 'pronto')}
+                onPaid={markPaid}
+                onReceipt={setReceipt}
+              />
+            ))
+          )}
         </section>
-      )}
 
-      {data.delivered.length > 0 && (
-        <details className="delivered-list">
-          <summary>Entregues hoje ({data.delivered.length})</summary>
-          <ul>
-            {data.delivered.map((o) => (
-              <li key={o.id}>
-                <span className="ticket-num">#{o.number}</span>
-                <span>{o.name}</span>
-                <span className="ready-total">
-                  {o.payment && <em className={`pay-badge ${o.payment}`}>{paymentLabel(o.payment, true)}</em>}
-                  {formatPrice(o.total)}
-                </span>
-                <PayButton order={o} onPaid={markPaid} onReceipt={setReceipt} />
-                <button type="button" className="link" onClick={() => setStatus(o, 'pronto')}>Voltar para prontos</button>
-              </li>
-            ))}
-          </ul>
-        </details>
+        {data.ready.length > 0 && (
+          <section className="ready-list" aria-label="Prontos hoje">
+            <h2>Prontos hoje</h2>
+            <ul>
+              {data.ready.map((o) => (
+                <li key={o.id}>
+                  <span className="ticket-num">#{o.number}</span>
+                  <span>{o.name}</span>
+                  <span className="muted">
+                    pronto às {new Date(o.readyAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <a href={whatsappLink(o)} target="_blank" rel="noreferrer" className="link">Reenviar WhatsApp</a>
+                  <button type="button" className="link" onClick={() => setStatus(o, 'novo')}>Desfazer</button>
+                  <PayButton order={o} onPaid={markPaid} onReceipt={setReceipt} />
+                  <span className="ready-total">
+                    {o.payment && <em className={`pay-badge ${o.payment}`}>{paymentLabel(o.payment, true)}</em>}
+                    {formatPrice(o.total)}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn-x"
+                    aria-label={`Pedido #${o.number} entregue, tirar da lista`}
+                    title="Entregue: tirar da lista"
+                    onClick={() => setStatus(o, 'entregue')}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <p className="ready-hint">Toque no × quando o cliente retirar o pedido.</p>
+          </section>
+        )}
+
+        {data.delivered.length > 0 && (
+          <details className="delivered-list">
+            <summary>Entregues hoje ({data.delivered.length})</summary>
+            <ul>
+              {data.delivered.map((o) => (
+                <li key={o.id}>
+                  <span className="ticket-num">#{o.number}</span>
+                  <span>{o.name}</span>
+                  <span className="ready-total">
+                    {o.payment && <em className={`pay-badge ${o.payment}`}>{paymentLabel(o.payment, true)}</em>}
+                    {formatPrice(o.total)}
+                  </span>
+                  <PayButton order={o} onPaid={markPaid} onReceipt={setReceipt} />
+                  <button type="button" className="link" onClick={() => setStatus(o, 'pronto')}>Voltar para prontos</button>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+        </>
       )}
 
       {showAll && (

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ensureSchema, getPool } from '@/lib/db';
-import { paymentLabel, resolveItem } from '@/lib/menu';
+import { paymentLabel } from '@/lib/menu';
 import { orderLabel } from '@/lib/phone';
 
 function toJson(o) {
@@ -25,7 +25,7 @@ export async function GET(_request, { params }) {
   return NextResponse.json(toJson(rows[0]));
 }
 
-// O cliente troca a forma de pagamento enquanto o pedido ainda não foi pago; o total é recalculado.
+// O cliente troca a forma de pagamento enquanto o pedido ainda não foi pago.
 export async function PATCH(request, { params }) {
   const { publicId } = await params;
   const { payment } = await request.json().catch(() => ({}));
@@ -37,12 +37,9 @@ export async function PATCH(request, { params }) {
   if (rows.length === 0) return NextResponse.json({ error: 'Pedido não encontrado' }, { status: 404 });
   if (rows[0].paid_at) return NextResponse.json({ error: 'Este pedido já foi pago.' }, { status: 409 });
 
-  const items = rows[0].items.map((i) => resolveItem({ productId: i.productId, qty: i.qty, flavors: i.flavors }, payment));
-  const total = items.reduce((sum, i) => sum + i.unitPrice * i.qty, 0);
   const updated = await pool.query(
-    `update orders set payment_method = $1, items = $2, total_cents = $3
-     where public_id = $4 and paid_at is null returning *`,
-    [payment, JSON.stringify(items), total, publicId],
+    `update orders set payment_method = $1 where public_id = $2 and paid_at is null returning *`,
+    [payment, publicId],
   );
   if (updated.rowCount === 0) return NextResponse.json({ error: 'Este pedido já foi pago.' }, { status: 409 });
   return NextResponse.json(toJson(updated.rows[0]));

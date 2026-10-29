@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/components/CartProvider';
 import PriceTag from '@/components/PriceTag';
 import ProductPhoto from '@/components/ProductPhoto';
-import { BURGERS, COMBOS, GELADINHOS, SAUCE, formatPrice } from '@/lib/menu';
+import { BURGERS, COMBOS, GELADINHOS, SAUCE, formatPrice, needsBurger } from '@/lib/menu';
 import { scrollToSection } from '@/lib/smooth-scroll';
+import { useBurgersSoldOut } from '@/components/useSoldOut';
 
 function useSectionTheme(refs, onActive) {
   useEffect(() => {
@@ -33,11 +34,20 @@ function useFlash() {
   }];
 }
 
-function ProductCard({ product, onAdd }) {
+function SoldOutPhoto({ product, soldOut }) {
+  return (
+    <div className="photo-wrap">
+      <ProductPhoto product={product} className="thumb" />
+      {soldOut && <span className="sold-out-tag">Sold out</span>}
+    </div>
+  );
+}
+
+function ProductCard({ product, onAdd, soldOut = false }) {
   const [added, flash] = useFlash();
   return (
-    <article id={product.id} className="card">
-      <ProductPhoto product={product} className="thumb" />
+    <article id={product.id} className={`card ${soldOut ? 'sold-out' : ''}`}>
+      <SoldOutPhoto product={product} soldOut={soldOut} />
       <div className="card-body">
         <h3>{product.name}</h3>
         <p>{product.tagline}</p>
@@ -51,12 +61,13 @@ function ProductCard({ product, onAdd }) {
           <button
             type="button"
             className="btn"
+            disabled={soldOut}
             onClick={() => {
               onAdd();
               flash();
             }}
           >
-            {added ? 'Adicionado ✓' : 'Adicionar'}
+            {soldOut ? 'Esgotado' : added ? 'Adicionado ✓' : 'Adicionar'}
           </button>
         </div>
       </div>
@@ -64,25 +75,27 @@ function ProductCard({ product, onAdd }) {
   );
 }
 
-function SauceCard({ onAdd }) {
+function SauceCard({ onAdd, soldOut = false }) {
   const [added, flash] = useFlash();
   return (
-    <div id={SAUCE.id} className="sauce-card">
+    <div id={SAUCE.id} className={`sauce-card ${soldOut ? 'sold-out' : ''}`}>
       <div>
         <h3>Molho da casa extra</h3>
         <p>Porção de 30g para acompanhar o seu hambúrguer. No Brasa Supreme o molho já vem incluso.</p>
       </div>
       <div className="sauce-buy">
         <span className="price">{formatPrice(SAUCE.price)}</span>
+        {soldOut && <span className="sold-out-tag inline">Sold out</span>}
         <button
           type="button"
           className="btn"
+          disabled={soldOut}
           onClick={() => {
             onAdd();
             flash();
           }}
         >
-          {added ? 'Adicionado ✓' : 'Adicionar molho'}
+          {soldOut ? 'Esgotado' : added ? 'Adicionado ✓' : 'Adicionar molho'}
         </button>
       </div>
     </div>
@@ -132,11 +145,11 @@ function ComboPicker({ combo, onClose, onConfirm }) {
   );
 }
 
-function CartSheet({ open, onClose }) {
-  const { lines, total, totalPix, setQty } = useCart();
+function CartSheet({ open, onClose, soldOut }) {
+  const { lines, total, setQty } = useCart();
   const router = useRouter();
-  const { customer } = useCart();
   if (!open) return null;
+  const blocked = soldOut && lines.some((l) => needsBurger(l.productId));
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="cart-title" onClick={onClose}>
       <div className="modal sheet" onClick={(e) => e.stopPropagation()}>
@@ -150,6 +163,7 @@ function CartSheet({ open, onClose }) {
                 <div>
                   <b>{l.product.name}</b>
                   {l.flavorNames.length > 0 && <small>Geladinho: {l.flavorNames.join(', ')}</small>}
+                  {soldOut && needsBurger(l.productId) && <small className="sold-out-text">Sold out, tire do pedido</small>}
                 </div>
                 <div className="qty">
                   <button type="button" aria-label="Diminuir" onClick={() => setQty(l.key, l.qty - 1)}>−</button>
@@ -162,23 +176,17 @@ function CartSheet({ open, onClose }) {
           </ul>
         )}
         <div className="cart-total">
-          <span>Total no cartão</span>
+          <span>Total</span>
           <b>{formatPrice(total)}</b>
         </div>
-        {totalPix < total && (
-          <div className="pix-total">
-            <span>Total no Pix</span>
-            <b>{formatPrice(totalPix)}</b>
-            <small>Economize {formatPrice(total - totalPix)} pagando no Pix</small>
-          </div>
-        )}
+        {blocked && <p className="form-error">Os hambúrgueres estão esgotados. Tire do pedido os itens marcados para continuar.</p>}
         <div className="modal-actions">
           <button type="button" className="btn btn-ghost" onClick={onClose}>Continuar escolhendo</button>
           <button
             type="button"
             className="btn"
-            disabled={lines.length === 0}
-            onClick={() => router.push(customer ? '/confirmar' : '/entrar')}
+            disabled={lines.length === 0 || blocked}
+            onClick={() => router.push('/entrar')}
           >
             Finalizar pedido
           </button>
@@ -190,17 +198,18 @@ function CartSheet({ open, onClose }) {
 
 export default function PedidoPage() {
   const { add, count, total } = useCart();
+  const soldOut = useBurgersSoldOut();
   const [combo, setCombo] = useState(null);
   const [cartOpen, setCartOpen] = useState(false);
   const burgersRef = useRef(null);
   const geladinhosRef = useRef(null);
   const combosRef = useRef(null);
-  const [refs] = useState(() => [burgersRef, geladinhosRef, combosRef]);
-  const [activeTab, setActiveTab] = useState('hamburgueres');
+  const [refs] = useState(() => [geladinhosRef, burgersRef, combosRef]);
+  const [activeTab, setActiveTab] = useState('geladinhos');
   useSectionTheme(refs, setActiveTab);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = 'brasa';
+    document.documentElement.dataset.theme = 'freeze';
   }, []);
 
   return (
@@ -211,8 +220,8 @@ export default function PedidoPage() {
       </header>
       <nav className="order-tabs">
         {[
-          ['hamburgueres', 'Hambúrgueres'],
           ['geladinhos', 'Geladinhos'],
+          ['hamburgueres', 'Hambúrgueres'],
           ['combos', 'Combos'],
         ].map(([id, label]) => (
           <a
@@ -229,16 +238,6 @@ export default function PedidoPage() {
         ))}
       </nav>
 
-      <section id="hamburgueres" ref={burgersRef} data-theme="brasa" className="order-section brasa">
-        <h2>Hambúrgueres</h2>
-        <div className="cards">
-          {BURGERS.map((p) => (
-            <ProductCard key={p.id} product={p} onAdd={() => add(p.id)} />
-          ))}
-        </div>
-        <SauceCard onAdd={() => add(SAUCE.id)} />
-      </section>
-
       <section id="geladinhos" ref={geladinhosRef} data-theme="freeze" className="order-section freeze">
         <h2>Geladinhos gourmet</h2>
         <div className="cards">
@@ -248,22 +247,40 @@ export default function PedidoPage() {
         </div>
       </section>
 
+      <section id="hamburgueres" ref={burgersRef} data-theme="brasa" className="order-section brasa">
+        <h2>Hambúrgueres</h2>
+        <div className="cards">
+          {BURGERS.map((p) => (
+            <ProductCard key={p.id} product={p} soldOut={soldOut} onAdd={() => add(p.id)} />
+          ))}
+        </div>
+        <SauceCard soldOut={soldOut} onAdd={() => add(SAUCE.id)} />
+      </section>
+
       <section id="combos" ref={combosRef} data-theme="mix" className="order-section mix">
         <h2>Combos</h2>
         <div className="cards">
-          {COMBOS.map((c) => (
-            <article key={c.id} id={c.id} className="card combo">
-              <ProductPhoto product={c} className="thumb" />
-              <div className="card-body">
-                <h3>{c.name}</h3>
-                <p>{c.description}</p>
-                <div className="card-buy">
-                  <PriceTag product={c} />
-                  <button type="button" className="btn" onClick={() => setCombo(c)}>Escolher</button>
-                </div>
-              </div>
-            </article>
-          ))}
+          {/* Com os hambúrgueres esgotados, os combos disponíveis aparecem primeiro. */}
+          {[...COMBOS]
+            .sort((a, b) => Number(soldOut && needsBurger(a.id)) - Number(soldOut && needsBurger(b.id)))
+            .map((c) => {
+              const out = soldOut && needsBurger(c.id);
+              return (
+                <article key={c.id} id={c.id} className={`card combo ${out ? 'sold-out' : ''}`}>
+                  <SoldOutPhoto product={c} soldOut={out} />
+                  <div className="card-body">
+                    <h3>{c.name}</h3>
+                    <p>{c.description}</p>
+                    <div className="card-buy">
+                      <PriceTag product={c} />
+                      <button type="button" className="btn" disabled={out} onClick={() => setCombo(c)}>
+                        {out ? 'Esgotado' : 'Escolher'}
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
         </div>
       </section>
 
@@ -284,7 +301,7 @@ export default function PedidoPage() {
           }}
         />
       )}
-      <CartSheet open={cartOpen} onClose={() => setCartOpen(false)} />
+      <CartSheet open={cartOpen} soldOut={soldOut} onClose={() => setCartOpen(false)} />
     </div>
   );
 }

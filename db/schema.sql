@@ -21,3 +21,18 @@ alter table orders add column if not exists payment_method text;
 alter table orders add column if not exists paid_at timestamptz;
 
 create index if not exists orders_status_created_idx on orders (status, created_at);
+
+-- Código de indicação usado no pedido (referral_codes.code).
+alter table orders add column if not exists referral_code text;
+create index if not exists orders_referral_idx on orders (referral_code);
+
+-- Ajustes ligados pela cozinha, como { key: 'burgers_sold_out', value: true }.
+create table if not exists settings (key text primary key, value jsonb not null);
+
+-- Um código de indicação por WhatsApp, gerado na página "Código".
+create table if not exists referral_codes (
+  code       text primary key,
+  name       text not null,
+  phone      text not null unique,
+  created_at timestamptz not null default now()
+);

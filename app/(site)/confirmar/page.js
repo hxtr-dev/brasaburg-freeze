@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/components/CartProvider';
 import ThemeReset from '@/components/ThemeReset';
-import { formatPrice, paymentLabel, priceFor } from '@/lib/menu';
+import { formatPrice, paymentLabel } from '@/lib/menu';
 
 export default function ConfirmarPage() {
-  const { ready, lines, total, totalPix, customer, clear } = useCart();
+  const { ready, lines, total, customer, setCustomer, clear } = useCart();
   const router = useRouter();
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -19,8 +19,6 @@ export default function ConfirmarPage() {
 
   if (!ready || !paymentLabel(customer?.payment)) return null;
 
-  const isPix = customer.payment === 'pix';
-  const payTotal = isPix ? totalPix : total;
 
   const send = async () => {
     setSending(true);
@@ -33,12 +31,15 @@ export default function ConfirmarPage() {
           name: customer.name,
           phone: customer.phone,
           payment: customer.payment,
+          referral: customer.referral || undefined,
           items: lines.map((l) => ({ productId: l.productId, qty: l.qty, flavors: l.flavors })),
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Não foi possível enviar o pedido.');
       clear();
+      // O código vale uma vez por pessoa; não fica salvo para o próximo pedido.
+      if (customer.referral) setCustomer({ ...customer, referral: '' });
       router.push(`/acompanhar/${data.publicId}`);
     } catch (err) {
       setError(err.message);
@@ -64,25 +65,19 @@ export default function ConfirmarPage() {
                     <b>{l.qty}× {l.product.name}</b>
                     {l.flavorNames.length > 0 && <small>Geladinho: {l.flavorNames.join(', ')}</small>}
                   </div>
-                  <span className="price">{formatPrice(priceFor(l.product, customer.payment) * l.qty)}</span>
+                  <span className="price">{formatPrice(l.subtotal)}</span>
                 </li>
               ))}
             </ul>
             <div className="cart-total">
               <span>Total no {paymentLabel(customer.payment, true)}</span>
-              <b>{formatPrice(payTotal)}</b>
+              <b>{formatPrice(total)}</b>
             </div>
-            {totalPix < total && (
-              <p className={`pay-hint ${isPix ? 'good' : ''}`}>
-                {isPix
-                  ? `Você está economizando ${formatPrice(total - totalPix)} pagando no Pix.`
-                  : `No Pix este pedido sai por ${formatPrice(totalPix)}, uma economia de ${formatPrice(total - totalPix)}.`}
-              </p>
-            )}
             <p className="pay-note">Pagamento feito apenas no balcão de retirada.</p>
             <p className="who">
               {customer.name} · {customer.phone} · {paymentLabel(customer.payment)} · <Link href="/entrar">alterar</Link>
             </p>
+            {customer.referral && <p className="who">Código de indicação: {customer.referral}</p>}
             {error && <p className="form-error" role="alert">{error}</p>}
             <button type="button" className="btn btn-big" onClick={send} disabled={sending}>
               {sending ? 'Enviando…' : 'Enviar Pedido para cozinha'}

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/components/CartProvider';
 import ThemeReset from '@/components/ThemeReset';
-import { PAYMENT_METHODS, formatPrice } from '@/lib/menu';
+import { PAYMENT_METHODS } from '@/lib/menu';
 
 function maskPhone(v) {
   const d = v.replace(/\D/g, '').slice(0, 11);
@@ -14,20 +14,39 @@ function maskPhone(v) {
 }
 
 export default function EntrarPage() {
-  const { customer, setCustomer, total, totalPix } = useCart();
+  const { customer, setCustomer } = useCart();
   const router = useRouter();
   const [name, setName] = useState(customer?.name ?? '');
   const [phone, setPhone] = useState(customer?.phone ?? '');
   const [payment, setPayment] = useState(customer?.payment ?? '');
+  const [referral, setReferral] = useState(customer?.referral ?? '');
   const [error, setError] = useState('');
+  const [checking, setChecking] = useState(false);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     const digits = phone.replace(/\D/g, '');
     if (name.trim().length < 2) return setError('Digite seu nome.');
     if (digits.length < 10) return setError('Digite seu WhatsApp com DDD.');
     if (!payment) return setError('Escolha a forma de pagamento.');
-    setCustomer({ name: name.trim(), phone, payment });
+    const code = referral.trim().toUpperCase();
+    if (code) {
+      setChecking(true);
+      try {
+        const res = await fetch('/api/indicacao/validar', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ code, phone }),
+        });
+        const data = await res.json();
+        if (!res.ok) return setError(data.error || 'Não foi possível conferir o código.');
+      } catch {
+        return setError('Não foi possível conferir o código. Tente de novo.');
+      } finally {
+        setChecking(false);
+      }
+    }
+    setCustomer({ name: name.trim(), phone, payment, referral: code });
     router.push('/confirmar');
   };
 
@@ -52,32 +71,46 @@ export default function EntrarPage() {
             required
           />
         </label>
+        <label>
+          <span>
+            Código de quem te indicou <span className="optional">(opcional)</span>
+          </span>
+          <input
+            value={referral}
+            onChange={(e) => {
+              setReferral(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''));
+              setError('');
+            }}
+            autoCapitalize="characters"
+            autoComplete="off"
+            maxLength={16}
+            placeholder="Ex.: MARIA4321"
+          />
+        </label>
         <fieldset className="pay-options">
           <legend>
             Forma de pagamento <span>(pagamento feito apenas no balcão de retirada)</span>
           </legend>
-          {PAYMENT_METHODS.map((m) => {
-            const amount = m.id === 'pix' ? totalPix : total;
-            return (
-              <label key={m.id} className={`pay-option ${payment === m.id ? 'on' : ''}`}>
-                <input type="radio" name="payment" value={m.id} checked={payment === m.id} onChange={() => {
-                    setPayment(m.id);
-                    setError('');
-                  }} />
-                <span className="pay-name">
-                  {m.label}
-                  {m.id === 'pix' && <em>Mais barato</em>}
-                </span>
-                {total > 0 && <b>{formatPrice(amount)}</b>}
-              </label>
-            );
-          })}
-          {totalPix < total && (
-            <p className="pay-hint">Pagando no Pix você economiza {formatPrice(total - totalPix)} neste pedido.</p>
-          )}
+          {PAYMENT_METHODS.map((m) => (
+            <label key={m.id} className={`pay-option ${payment === m.id ? 'on' : ''}`}>
+              <input
+                type="radio"
+                name="payment"
+                value={m.id}
+                checked={payment === m.id}
+                onChange={() => {
+                  setPayment(m.id);
+                  setError('');
+                }}
+              />
+              <span className="pay-name">{m.label}</span>
+            </label>
+          ))}
         </fieldset>
         {error && <p className="form-error" role="alert">{error}</p>}
-        <button type="submit" className="btn btn-big">Continuar</button>
+        <button type="submit" className="btn btn-big" disabled={checking}>
+          {checking ? 'Conferindo código…' : 'Continuar'}
+        </button>
       </form>
     </div>
   );
