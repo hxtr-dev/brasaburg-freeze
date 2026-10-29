@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import ThemeReset from '@/components/ThemeReset';
-import { PAYMENT_METHODS, formatPrice, paymentLabel } from '@/lib/menu';
+import { formatPrice, paymentLabel } from '@/lib/menu';
 
 function ItemList({ items }) {
   return (
@@ -25,11 +25,25 @@ export default function AcompanharPage({ params }) {
   const { id } = use(params);
   const [order, setOrder] = useState(null);
   const [error, setError] = useState('');
-  const [changing, setChanging] = useState(false);
+  const [payingOnline, setPayingOnline] = useState(false);
 
   useEffect(() => {
     let stop = false;
     let timer;
+    // Ao voltar do checkout, confirma o pagamento sem esperar o aviso automático da InfinitePay.
+    const q = new URLSearchParams(window.location.search);
+    if (q.get('transaction_nsu') && q.get('slug')) {
+      fetch('/api/pagamentos/infinitepay', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          order_nsu: id,
+          slug: q.get('slug'),
+          transaction_nsu: q.get('transaction_nsu'),
+          capture_method: q.get('capture_method'),
+        }),
+      }).catch(() => {});
+    }
     const load = async () => {
       try {
         const res = await fetch(`/api/orders/${id}`, { cache: 'no-store' });
@@ -50,23 +64,17 @@ export default function AcompanharPage({ params }) {
     };
   }, [id]);
 
-  const changePayment = async (payment) => {
-    if (payment === order.payment) return;
-    setChanging(true);
+  const payOnline = async () => {
+    setPayingOnline(true);
     setError('');
     try {
-      const res = await fetch(`/api/orders/${id}`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ payment }),
-      });
+      const res = await fetch(`/api/orders/${id}/pagar`, { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Não foi possível trocar a forma de pagamento.');
-      setOrder(data);
+      if (!res.ok) throw new Error(data.error || 'Não foi possível iniciar o pagamento.');
+      window.location.href = data.url;
     } catch (err) {
       setError(err.message);
-    } finally {
-      setChanging(false);
+      setPayingOnline(false);
     }
   };
 
@@ -89,30 +97,15 @@ export default function AcompanharPage({ params }) {
         <div className="panel-form ticket">
           <p className="kicker">Pedido recebido</p>
           <p className="pay-waiting" aria-live="polite">Aguardando pagamento</p>
-          <p>
-            {order.name}, vá ao balcão de retirada e pague <b>{formatPrice(order.total)}</b>
-            {order.payment ? ` no ${paymentLabel(order.payment, true)}` : ''}. Assim que o pagamento for confirmado,
-            o número do seu pedido aparece aqui.
-          </p>
-
-          <fieldset className="pay-options">
-            <legend>
-              Forma de pagamento <span>(pagamento feito apenas no balcão de retirada)</span>
-            </legend>
-            {PAYMENT_METHODS.map((m) => (
-              <label key={m.id} className={`pay-option ${order.payment === m.id ? 'on' : ''}`}>
-                <input
-                  type="radio"
-                  name="payment"
-                  value={m.id}
-                  checked={order.payment === m.id}
-                  disabled={changing}
-                  onChange={() => changePayment(m.id)}
-                />
-                <span className="pay-name">{m.label}</span>
-              </label>
-            ))}
-          </fieldset>
+          <div className="pay-split-online">
+            <p>
+              {order.name}, falta só o pagamento de <b>{formatPrice(order.total)}</b>. Pague pelo site com Pix, débito ou
+              crédito. Assim que for confirmado, o número do seu pedido aparece aqui.
+            </p>
+            <button type="button" className="btn btn-big pay-online-btn" onClick={payOnline} disabled={payingOnline}>
+              {payingOnline ? 'Abrindo pagamento…' : `Pagar ${formatPrice(order.total)} pelo site`}
+            </button>
+          </div>
           {error && <p className="form-error" role="alert">{error}</p>}
 
           <ItemList items={order.items} />

@@ -2232,3 +2232,8 @@ input:focus {
 .rank-pending {
   color: #8fd8ff !important;
 }
+
+.pay-online-btn {
+  width: 100%;
+  margin: 14px 0 6px;
+}

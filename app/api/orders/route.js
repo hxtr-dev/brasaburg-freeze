@@ -19,8 +19,7 @@ export async function POST(request) {
   if (name.length < 2) return NextResponse.json({ error: 'Informe seu nome' }, { status: 400 });
   if (!phone) return NextResponse.json({ error: 'WhatsApp inválido. Use DDD + número.' }, { status: 400 });
 
-  const payment = String(body?.payment ?? '');
-  if (!paymentLabel(payment)) return NextResponse.json({ error: 'Escolha a forma de pagamento' }, { status: 400 });
+  const payment = paymentLabel(String(body?.payment ?? '')) ? String(body.payment) : null;
 
   const rawItems = Array.isArray(body?.items) ? body.items : [];
   if (rawItems.length === 0 || rawItems.length > 30) {

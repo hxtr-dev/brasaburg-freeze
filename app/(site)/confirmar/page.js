@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/components/CartProvider';
 import ThemeReset from '@/components/ThemeReset';
-import { formatPrice, paymentLabel } from '@/lib/menu';
+import { formatPrice } from '@/lib/menu';
 
 export default function ConfirmarPage() {
   const { ready, lines, total, customer, setCustomer, clear } = useCart();
@@ -14,10 +14,10 @@ export default function ConfirmarPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (ready && !paymentLabel(customer?.payment)) router.replace('/entrar');
+    if (ready && !customer?.name) router.replace('/entrar');
   }, [ready, customer, router]);
 
-  if (!ready || !paymentLabel(customer?.payment)) return null;
+  if (!ready || !customer?.name) return null;
 
 
   const send = async () => {
@@ -30,7 +30,6 @@ export default function ConfirmarPage() {
         body: JSON.stringify({
           name: customer.name,
           phone: customer.phone,
-          payment: customer.payment,
           referral: customer.referral || undefined,
           items: lines.map((l) => ({ productId: l.productId, qty: l.qty, flavors: l.flavors })),
         }),
@@ -70,12 +69,12 @@ export default function ConfirmarPage() {
               ))}
             </ul>
             <div className="cart-total">
-              <span>Total no {paymentLabel(customer.payment, true)}</span>
+              <span>Total</span>
               <b>{formatPrice(total)}</b>
             </div>
-            <p className="pay-note">Pagamento feito apenas no balcão de retirada.</p>
+            <p className="pay-note">O pagamento é feito pelo site na próxima tela (Pix, débito ou crédito).</p>
             <p className="who">
-              {customer.name} · {customer.phone} · {paymentLabel(customer.payment)} · <Link href="/entrar">alterar</Link>
+              {customer.name} · {customer.phone} · <Link href="/entrar">alterar</Link>
             </p>
             {customer.referral && <p className="who">Código de indicação: {customer.referral}</p>}
             {error && <p className="form-error" role="alert">{error}</p>}

@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/components/CartProvider';
 import ThemeReset from '@/components/ThemeReset';
-import { PAYMENT_METHODS } from '@/lib/menu';
 
 function maskPhone(v) {
   const d = v.replace(/\D/g, '').slice(0, 11);
@@ -18,7 +17,6 @@ export default function EntrarPage() {
   const router = useRouter();
   const [name, setName] = useState(customer?.name ?? '');
   const [phone, setPhone] = useState(customer?.phone ?? '');
-  const [payment, setPayment] = useState(customer?.payment ?? '');
   const [referral, setReferral] = useState(customer?.referral ?? '');
   const [error, setError] = useState('');
   const [checking, setChecking] = useState(false);
@@ -28,7 +26,6 @@ export default function EntrarPage() {
     const digits = phone.replace(/\D/g, '');
     if (name.trim().length < 2) return setError('Digite seu nome.');
     if (digits.length < 10) return setError('Digite seu WhatsApp com DDD.');
-    if (!payment) return setError('Escolha a forma de pagamento.');
     const code = referral.trim().toUpperCase();
     if (code) {
       setChecking(true);
@@ -46,7 +43,7 @@ export default function EntrarPage() {
         setChecking(false);
       }
     }
-    setCustomer({ name: name.trim(), phone, payment, referral: code });
+    setCustomer({ name: name.trim(), phone, referral: code });
     router.push('/confirmar');
   };
 
@@ -55,7 +52,7 @@ export default function EntrarPage() {
       <ThemeReset />
       <form className="panel-form" onSubmit={submit}>
         <h1>Quem está pedindo?</h1>
-        <p>Usamos seu nome para chamar no balcão e o WhatsApp para avisar quando o pedido ficar pronto.</p>
+        <p>Usamos seu nome para chamar no balcão e o WhatsApp para avisar quando o pedido ficar pronto. O pagamento é feito pelo site, logo após enviar o pedido.</p>
         <label>
           Nome
           <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="given-name" maxLength={60} required />
@@ -87,26 +84,6 @@ export default function EntrarPage() {
             placeholder="Ex.: MARIA4321"
           />
         </label>
-        <fieldset className="pay-options">
-          <legend>
-            Forma de pagamento <span>(pagamento feito apenas no balcão de retirada)</span>
-          </legend>
-          {PAYMENT_METHODS.map((m) => (
-            <label key={m.id} className={`pay-option ${payment === m.id ? 'on' : ''}`}>
-              <input
-                type="radio"
-                name="payment"
-                value={m.id}
-                checked={payment === m.id}
-                onChange={() => {
-                  setPayment(m.id);
-                  setError('');
-                }}
-              />
-              <span className="pay-name">{m.label}</span>
-            </label>
-          ))}
-        </fieldset>
         {error && <p className="form-error" role="alert">{error}</p>}
         <button type="submit" className="btn btn-big" disabled={checking}>
           {checking ? 'Conferindo código…' : 'Continuar'}
